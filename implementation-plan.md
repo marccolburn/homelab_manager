@@ -143,6 +143,23 @@ homelab-manager/
 10. ✅ **Update systemd service file** for new app.py location - COMPLETED
 11. ⏳ **Test all functionality** after reorganization - IN PROGRESS
 12. 📋 **Remove or archive old lab_manager.py** file
+13. ⏳ **Fix unit test issues** (mocking and API blueprint injection) - IN PROGRESS
+
+### 2.4 Current Todo List Status
+
+**Phase 2 Remaining Tasks:**
+- [ ] `phase2-11`: Test all functionality after reorganization (IN PROGRESS)
+- [ ] `phase2-12`: Remove or archive old lab_manager.py file (PENDING)
+- [ ] `phase2-13`: Fix unit test issues (mocking and API blueprint injection) (IN PROGRESS)
+
+**Phase 3 Upcoming Tasks:**
+- [ ] `phase3-1`: Create NetBox integration module in src/backend/integrations/netbox.py (PENDING)
+- [ ] `phase3-2`: Add IP allocation to lab deployment workflow (PENDING)
+- [ ] `phase3-3`: Implement IP release on lab destruction (PENDING)
+- [ ] `phase3-4`: Add NetBox device registration (PENDING)
+- [ ] `phase3-5`: Update nodes.csv with allocated IPs (PENDING)
+- [ ] `phase3-6`: Add NetBox configuration validation (PENDING)
+- [ ] `phase3-7`: Test NetBox integration end-to-end (PENDING)
 
 ### 2.3 Benefits of Reorganization
 - **Improved maintainability** - Clear separation of concerns

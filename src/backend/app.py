@@ -34,11 +34,7 @@ clab_runner = ClabRunner(
 )
 
 # Initialize lab manager with injected dependencies
-lab_manager = LabManager(config)
-
-# Update LabManager to use the new modules
-# This would require updating LabManager to accept git_ops and clab_runner
-# For now, we'll keep the existing implementation
+lab_manager = LabManager(config, git_ops, clab_runner)
 
 # Register blueprints and inject lab_manager
 for blueprint in [repos_bp, labs_bp, tasks_bp, health_bp]:
@@ -74,4 +70,6 @@ def create_app():
 
 if __name__ == '__main__':
     # Development server
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import os
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port, debug=True)

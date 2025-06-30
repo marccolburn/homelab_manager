@@ -101,9 +101,26 @@ homelab-manager/
 
 ⏳ **In Progress:**
 - Testing all functionality after reorganization
+- Fixing unit test issues (mocking and API blueprint injection)
 
 📋 **Remaining:**
 - Remove or archive old legacy files (app.py, labctl.py, lab_manager.py)
+
+### Current Todo List (Pre-Auto-Compact):
+
+**Phase 2 Final Tasks:**
+- `phase2-11`: Test all functionality after reorganization (IN PROGRESS)
+- `phase2-12`: Remove or archive old lab_manager.py file (PENDING)  
+- `phase2-13`: Fix unit test issues (mocking and API blueprint injection) (IN PROGRESS)
+
+**Phase 3 Ready to Start:**
+- `phase3-1`: Create NetBox integration module in src/backend/integrations/netbox.py
+- `phase3-2`: Add IP allocation to lab deployment workflow
+- `phase3-3`: Implement IP release on lab destruction
+- `phase3-4`: Add NetBox device registration
+- `phase3-5`: Update nodes.csv with allocated IPs
+- `phase3-6`: Add NetBox configuration validation
+- `phase3-7`: Test NetBox integration end-to-end
 
 ### Key Module Responsibilities
 
