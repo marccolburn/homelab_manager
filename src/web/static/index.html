@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Lab Management System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .lab-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .lab-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .lab-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .lab-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .lab-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .lab-category {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .lab-difficulty {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .difficulty-beginner { background: #d4edda; color: #155724; }
+        .difficulty-intermediate { background: #fff3cd; color: #856404; }
+        .difficulty-advanced { background: #f8d7da; color: #721c24; }
+        .difficulty-expert { background: #e2e3e5; color: #383d41; }
+
+        .lab-description {
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+
+        .lab-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .tag {
+            background: #f1f3f4;
+            color: #5f6368;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+
+        .lab-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .lab-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .deployments-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-deployed { background: #10b981; }
+        .status-deploying { background: #f59e0b; }
+        .status-failed { background: #ef4444; }
+
+        .deployment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .deployment-info h4 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .deployment-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #10b981;
+        }
+
+        .notification.error {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 Network Lab Management</h1>
+            <p>Deploy and manage your network topology labs with ease</p>
+        </div>
+
+        <div id="labs-container">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading available labs...</p>
+            </div>
+        </div>
+
+        <div class="deployments-section">
+            <h2 class="section-title">
+                <span class="status-indicator status-deployed"></span>
+                Active Deployments
+            </h2>
+            <div id="deployments-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading deployments...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // Load labs on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLabs();
+            loadDeployments();
+            
+            // Refresh deployments every 30 seconds
+            setInterval(loadDeployments, 30000);
+        });
+
+        async function loadLabs() {
+            try {
+                const response = await fetch(`${API_BASE}/labs`);
+                const labs = await response.json();
+                displayLabs(labs);
+            } catch (error) {
+                console.error('Failed to load labs:', error);
+                document.getElementById('labs-container').innerHTML = 
+                    '<div class="loading"><p>Failed to load labs. Please try again later.</p></div>';
+            }
+        }
+
+        async function loadDeployments() {
+            try {
+                const response = await fetch(`${API_BASE}/deployments`);
+                const deployments = await response.json();
+                displayDeployments(deployments);
+            } catch (error) {
+                console.error('Failed to load deployments:', error);
+                document.getElementById('deployments-container').innerHTML = 
+                    '<p>Failed to load deployments.</p>';
+            }
+        }
+
+        function displayLabs(labs) {
+            const container = document.getElementById('labs-container');
+            
+            if (labs.length === 0) {
+                container.innerHTML = '<div class="loading"><p>No labs available.</p></div>';
+                return;
+            }
+
+            const labsHTML = labs.map(lab => {
+                const difficultyClass = `difficulty-${lab.difficulty.toLowerCase()}`;
+                const tagsHTML = lab.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+                
+                return `
+                    <div class="lab-card">
+                        <div class="lab-header">
+                            <div>
+                                <div class="lab-title">${lab.name}</div>
+                                <div class="lab-difficulty ${difficultyClass}">${lab.difficulty}</div>
+                            </div>
+                            <div class="lab-category">${lab.category}</div>
+                        </div>
+                        
+                        <div class="lab-description">${lab.description.short}</div>
+                        
+                        <div class="lab-tags">${tagsHTML}</div>
+                        
+                        <div class="lab-stats">
+                            <div class="stat">
+                                <div class="stat-value">${lab.topology.nodes}</div>
+                                <div class="stat-label">Nodes</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${lab.requirements.memory_gb}GB</div>
+                                <div class="stat-label">Memory</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${lab.estimated_time}</div>
+                                <div class="stat-label">Duration</div>
+                            </div>
+                        </div>
+                        
+                        <div class="lab-actions">
+                            <button class="btn btn-primary" onclick="deployLab('${lab.id}')">
+                                🚀 Deploy Lab
+                            </button>
+                            <button class="btn btn-secondary" onclick="viewLabDetails('${lab.id}')">
+                                📖 Details
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `<div class="lab-grid">${labsHTML}</div>`;
+        }
+
+        function displayDeployments(deployments) {
+            const container = document.getElementById('deployments-container');
+            
+            const deploymentKeys = Object.keys(deployments);
+            if (deploymentKeys.length === 0) {
+                container.innerHTML = '<p>No active deployments.</p>';
+                return;
+            }
+
+            const deploymentsHTML = deploymentKeys.map(deploymentId => {
+                const deployment = deployments[deploymentId];
+                const statusClass = `status-${deployment.status}`;
+                const deployedAt = new Date(deployment.deployed_at).toLocaleString();
+                
+                return `
+                    <div class="deployment-item">
+                        <div class="deployment-info">
+                            <h4>
+                                <span class="status-indicator ${statusClass}"></span>
+                                ${deployment.lab_id}
+                            </h4>
+                            <p>Deployed: ${deployedAt} | Status: ${deployment.status}</p>
+                        </div>
+                        <button class="btn btn-danger" onclick="teardownDeployment('${deploymentId}')">
+                            🗑️ Teardown
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = deploymentsHTML;
+        }
+
+        async function deployLab(labId) {
+            showNotification('Deploying lab...', 'success');
+            
+            try {
+                const response = await fetch(`${API_BASE}/labs/${labId}/deploy`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showNotification(`Lab ${labId} deployed successfully!`, 'success');
+                    loadDeployments(); // Refresh deployments
+                } else {
+                    showNotification(`Deployment failed: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showNotification(`Deployment failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function teardownDeployment(deploymentId) {
+            if (!confirm('Are you sure you want to teardown this deployment?')) {
+                return;
+            }
+
+            showNotification('Tearing down deployment...', 'success');
+            
+            try {
+                const response = await fetch(`${API_BASE}/deployments/${deploymentId}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showNotification('Deployment torn down successfully!', 'success');
+                    loadDeployments(); // Refresh deployments
+                } else {
+                    showNotification(`Teardown failed: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showNotification(`Teardown failed: ${error.message}`, 'error');
+            }
+        }
+
+        function viewLabDetails(labId) {
+            // Open lab details in new window/tab
+            window.open(`${API_BASE}/labs/${labId}/details`, '_blank');
+        }
+
+        function showNotification(message, type) {
+            // Remove existing notifications
+            const existing = document.querySelector('.notification');
+            if (existing) {
+                existing.remove();
+            }
+
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+
+            // Hide notification after 5 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

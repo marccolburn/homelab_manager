@@ -1,0 +1,23 @@
+# All-in-One Installation Dependencies
+# Combines both backend and frontend requirements
+
+# Backend Dependencies
+flask>=3.0.0
+flask-cors>=4.0.0
+pyyaml>=6.0.1
+pynetbox>=7.3.0
+gunicorn>=21.2.0
+
+# CLI Dependencies
+click>=8.1.7
+rich>=13.7.0
+requests>=2.31.0
+
+# Development Dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.11.0
+flake8>=6.1.0
+
+# Optional Dependencies
+python-dotenv>=1.0.0

@@ -1,0 +1,9 @@
+# Backend Dependencies - For lab server installation
+flask>=3.0.0
+flask-cors>=4.0.0
+pyyaml>=6.0.1
+pynetbox>=7.3.0
+gunicorn>=21.2.0
+
+# Development Dependencies (optional)
+python-dotenv>=1.0.0

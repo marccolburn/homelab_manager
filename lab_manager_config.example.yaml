@@ -1,0 +1,40 @@
+# Lab Manager Configuration Example
+# Copy this file to lab_manager_config.yaml and update with your values
+local_repo_path: "./lab_repos"
+
+# NetBox Integration
+netbox:
+  enabled: false
+  url: "https://your-netbox-instance.com"
+  token: "your-netbox-api-token"
+  site_name: "Lab Environment"
+  device_role_name: "Lab Device"
+  tenant_name: "Network Labs"
+
+# Git Repositories containing lab topologies
+repositories:
+  - url: "git@github.com:your-username/your-lab-repo.git"
+    name: "Example Lab"
+    category: "Example Category"
+
+# Remote host configuration for ContainerLab
+remote_hosts:
+  - name: "primary-lab-host"
+    host: "192.168.1.100"
+    username: "labuser"
+    max_concurrent_labs: 3
+    resources:
+      memory_gb: 64
+      cpu_cores: 16
+      disk_gb: 500
+
+# Default settings
+defaults:
+  lab_timeout_hours: 8
+  auto_cleanup: true
+  notification_webhook: "https://your-webhook-url"
+
+# Logging
+logging:
+  level: "INFO"
+  file: "/var/log/lab_manager.log"
