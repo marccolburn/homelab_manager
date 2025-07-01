@@ -22,8 +22,9 @@ logger = logging.getLogger(__name__)
 
 def create_app(test_config=None):
     """Application factory pattern"""
-    # Initialize Flask app
-    app = Flask(__name__)
+    # Initialize Flask app with static folder configuration
+    static_folder = Path(__file__).parent.parent / 'web' / 'static'
+    app = Flask(__name__, static_url_path='/static', static_folder=str(static_folder))
     CORS(app)  # Enable CORS for all routes
     
     # Load configuration
@@ -49,24 +50,23 @@ def create_app(test_config=None):
     for blueprint in [repos_bp, labs_bp, tasks_bp, health_bp]:
         app.register_blueprint(blueprint)
     
+    # Debug route to check paths
+    @app.route('/debug/paths')
+    def debug_paths():
+        web_dir = Path(__file__).parent.parent / 'web' / 'static'
+        return {
+            'web_dir': str(web_dir),
+            'web_dir_resolved': str(web_dir.resolve()),
+            'web_dir_exists': web_dir.exists(),
+            'cwd': str(Path.cwd()),
+            'file': __file__
+        }
+    
     # Static file serving for web UI
     @app.route('/')
     def index():
         """Serve the web UI"""
-        web_dir = Path(__file__).parent.parent / 'web'
-        if not web_dir.exists():
-            # Fallback to old location during transition
-            web_dir = Path('web')
-        return send_from_directory(str(web_dir), 'index.html')
-    
-    @app.route('/<path:path>')
-    def serve_static(path):
-        """Serve static files"""
-        web_dir = Path(__file__).parent.parent / 'web'
-        if not web_dir.exists():
-            # Fallback to old location during transition
-            web_dir = Path('web')
-        return send_from_directory(str(web_dir), path)
+        return send_from_directory(app.static_folder, 'index.html')
     
     return app
 

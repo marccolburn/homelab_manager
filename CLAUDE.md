@@ -581,6 +581,109 @@ labctl deploy my-lab --allocate-ips
 labctl doctor
 ```
 
+## Configuration Management
+
+### Configuration Files
+
+The Homelab Manager uses multiple configuration files for different purposes:
+
+1. **Backend Configuration**: `~/.labctl/config.yaml`
+   - Loaded by `src/backend/core/config.py`
+   - Contains runtime settings for the backend
+   - Created automatically with defaults if not present
+   - Includes: repos_dir, logs_dir, state_file, NetBox settings
+
+2. **Lab Repository Config**: `lab_manager_config.yaml` (in project root)
+   - Reference configuration (not actively used by backend)
+   - Shows example remote host and NetBox configurations
+   - For documentation purposes
+
+3. **Lab-specific Config**: `<lab_repo>/clab_tools_files/config.yaml`
+   - Contains clab-tools specific configuration
+   - Includes remote host settings for containerlab
+   - Read by clab-tools during deployment
+
+4. **Lab Metadata**: `<lab_repo>/lab-metadata.yaml`
+   - Lab discovery and management metadata
+   - Includes NetBox settings specific to the lab
+   - Read by backend during repository scanning
+
+### Remote Deployment Configuration
+
+**IMPORTANT**: For remote deployments to work properly, you need:
+
+1. **SSH Key Authentication**: The backend server must have passwordless SSH access to the remote host
+   ```bash
+   ssh-copy-id mcolburn@10.1.91.4
+   ```
+
+2. **Environment Variable for clab-tools Password** (if sudo is required):
+   ```bash
+   export CLAB_TOOLS_PASSWORD="your-password"
+   ```
+
+3. **Proper config.yaml in the lab repository**:
+   ```yaml
+   # clab_tools_files/config.yaml
+   remote:
+     host: 10.1.91.4
+     user: mcolburn
+     # Password should come from environment variable
+   ```
+
+4. **NetBox Configuration** (if using dynamic IPs):
+   - Update `~/.labctl/config.yaml` with NetBox details:
+   ```yaml
+   netbox:
+     enabled: true
+     url: "http://10.1.80.12:8080"
+     token: "your-api-token"
+     default_prefix: "10.100.100.0/24"
+   ```
+
+### Common Deployment Issues
+
+1. **Bootstrap Failed**: Usually means SSH/authentication issues
+   - ✅ **Use SSH Setup Script**: `./scripts/setup-remote-ssh.sh`
+   - This script automatically:
+     - Generates SSH keys if needed
+     - Sets up passwordless SSH authentication
+     - Tests connectivity to remote host
+     - Verifies clab-tools availability
+   - Manual check: `ssh mcolburn@10.1.91.4`
+   - Ensure clab-tools is installed on remote host
+   - Check bootstrap.sh exists and is executable
+
+2. **No Active Deployments**: Deployment failed during bootstrap
+   - Check `/var/lib/labctl/logs/<deployment_id>.log` for details
+   - Verify remote host has sufficient resources
+   - Ensure all paths in config files are correct
+
+3. **NetBox IP Allocation Failed**: 
+   - Verify NetBox is accessible
+   - Check API token has proper permissions
+   - Ensure prefix exists in NetBox
+
+4. **SSH Authentication Issues**: 
+   - ✅ **Automated Fix Available**: Run `./scripts/setup-remote-ssh.sh`
+   - Script handles SSH key generation and remote setup
+   - Validates CLAB_TOOLS_PASSWORD environment variable
+   - Tests end-to-end connectivity
+
+5. **Active Deployments Silently Failing**: 
+   - Deployments appear to start but fail without clear error messages
+   - Web UI may show deployment initiated but no active deployments appear
+   - **Troubleshooting Steps**:
+     - Check backend logs for detailed error messages
+     - Run `./scripts/test-deployment.sh` to validate configuration
+     - Use `./tests/test_configuration.py` to verify all settings
+     - Monitor deployment logs in real-time during attempts
+   - **Common Causes**:
+     - SSH connectivity issues (use setup-remote-ssh.sh)
+     - Missing or incorrect lab configuration files
+     - Remote host resource constraints
+     - Incorrect file permissions on bootstrap.sh
+
 ## Development Environment
 
 ### Quick Start for Development
@@ -589,7 +692,7 @@ After Phase 2 reorganization, use these commands for development:
 
 ```bash
 # Backend Development
-./run-backend.sh  # Starts Flask on http://localhost:5000
+./scripts/run-backend.sh  # Starts Flask on http://localhost:5001
 
 # Or manually:
 python3 -m venv .venv
@@ -602,8 +705,26 @@ PYTHONPATH=. .venv/bin/python -m src.backend.app
 # Then use labctl normally
 labctl --help
 
-# Running tests (when implemented)
-PYTHONPATH=. .venv/bin/pytest tests/
+# Running tests
+PYTHONPATH=. .venv/bin/python tests/run_tests.py
+```
+
+### Testing Remote Deployments
+
+To test remote deployments without an actual remote host:
+
+1. **Local Testing**: Modify the lab's config.yaml to remove remote settings
+2. **Mock Remote Host**: Use Docker container as fake remote host
+3. **Unit Tests**: Run deployment tests with mocked SSH
+
+```python
+# Example test for remote deployment
+def test_remote_deployment():
+    # Mock SSH connection
+    with patch('paramiko.SSHClient') as mock_ssh:
+        # Test deployment logic
+        result = lab_manager.deploy_lab('test-lab')
+        assert result['success']
 ```
 
 ### Current Status (Post Phase 2)
