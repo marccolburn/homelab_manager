@@ -15,7 +15,7 @@ from .commands import repo, lab_commands, config, system_commands
 console = Console()
 
 # Default API endpoint
-DEFAULT_API_URL = "http://localhost:5000"
+DEFAULT_API_URL = "http://localhost:5001"
 
 
 @click.group()
@@ -29,11 +29,12 @@ def cli(ctx, api_url):
     ctx.ensure_object(dict)
     ctx.obj['client'] = LabCtlClient(api_url)
     
-    # Check backend health
-    if not ctx.obj['client'].health_check():
-        console.print(f"[red]Error: Backend is not healthy at {api_url}[/red]")
-        console.print("[yellow]Start the backend with: python app.py[/yellow]")
-        sys.exit(1)
+    # Only check backend health if we're running an actual command (not help)
+    if ctx.invoked_subcommand and ctx.invoked_subcommand not in ['--help', '-h']:
+        if not ctx.obj['client'].health_check():
+            console.print(f"[red]Error: Backend is not healthy at {api_url}[/red]")
+            console.print("[yellow]Start the backend with: python app.py[/yellow]")
+            sys.exit(1)
 
 
 # Register command groups

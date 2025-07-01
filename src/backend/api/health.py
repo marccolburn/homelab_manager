@@ -20,3 +20,10 @@ def get_config():
     if 'netbox' in config and 'token' in config['netbox']:
         config['netbox']['token'] = "***"
     return jsonify(config)
+
+
+@health_bp.route('/api/netbox/validate', methods=['GET'])
+def validate_netbox():
+    """Validate NetBox configuration and connectivity"""
+    result = current_app.lab_manager.validate_netbox_config()
+    return jsonify(result)

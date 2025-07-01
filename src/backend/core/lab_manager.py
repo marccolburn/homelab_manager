@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .git_ops import GitOperations
     from .clab_runner import ClabRunner
+    from ..integrations.netbox import NetBoxManager
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,8 @@ class LabManager:
     """Core lab management functionality"""
     
     def __init__(self, config: Dict, git_ops: Optional['GitOperations'] = None, 
-                 clab_runner: Optional['ClabRunner'] = None):
+                 clab_runner: Optional['ClabRunner'] = None,
+                 netbox_manager: Optional['NetBoxManager'] = None):
         self.config = config
         self.state = self._load_state()
         self._ensure_directories()
@@ -44,6 +46,17 @@ class LabManager:
                 config.get("clab_tools_cmd", "clab-tools"),
                 Path(config.get("logs_dir", "/var/lib/labctl/logs"))
             )
+        
+        # Initialize NetBox manager if enabled
+        if netbox_manager:
+            self.netbox = netbox_manager
+        else:
+            netbox_config = config.get("netbox", {})
+            if netbox_config.get("enabled", False):
+                from ..integrations.netbox import NetBoxManager
+                self.netbox = NetBoxManager(netbox_config)
+            else:
+                self.netbox = None
     
     def _load_state(self) -> Dict:
         """Load state file"""
@@ -220,10 +233,40 @@ class LabManager:
             if not result["success"]:
                 return result
         
-        # TODO: Implement NetBox IP allocation if allocate_ips is True
-        if allocate_ips and self.config.get("netbox", {}).get("enabled"):
+        # NetBox IP allocation if requested
+        ip_assignments = {}
+        if allocate_ips and self.netbox and self.netbox.enabled:
             logger.info("Allocating IPs from NetBox...")
-            # Implementation needed
+            
+            # Read nodes from nodes.csv to get list of devices
+            nodes_file = repo_path / "clab_tools_files" / "nodes.csv"
+            if not nodes_file.exists():
+                return {"success": False, "error": "nodes.csv not found"}
+                
+            # Extract node names from CSV
+            import csv
+            node_names = []
+            with open(nodes_file, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    node_name = row.get('hostname', row.get('name', ''))
+                    if node_name:
+                        node_names.append(node_name)
+                        
+            if node_names:
+                # Allocate IPs from NetBox
+                ip_assignments = self.netbox.allocate_ips(lab_id, node_names)
+                
+                if not ip_assignments:
+                    return {"success": False, "error": "Failed to allocate IPs from NetBox"}
+                    
+                # Update nodes.csv with allocated IPs
+                if not self.netbox.update_nodes_csv(nodes_file, ip_assignments):
+                    # Rollback IP allocations on failure
+                    self.netbox.release_ips(lab_id)
+                    return {"success": False, "error": "Failed to update nodes.csv with IPs"}
+                    
+                logger.info(f"Allocated {len(ip_assignments)} IPs from NetBox")
         
         # Deploy lab using clab_runner
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -234,13 +277,28 @@ class LabManager:
         success, result = self.clab_runner.bootstrap_lab(lab_id, repo_path, deployment_id)
         
         if success:
+            # Register devices in NetBox if IPs were allocated
+            if ip_assignments and self.netbox:
+                # Re-read nodes.csv to get updated node info
+                nodes_info = []
+                with open(nodes_file, 'r') as f:
+                    reader = csv.DictReader(f)
+                    nodes_info = list(reader)
+                    
+                # Register devices
+                lab_name = repo_info.get("metadata", {}).get("name", lab_id)
+                created_devices = self.netbox.register_devices(lab_id, lab_name, nodes_info)
+                logger.info(f"Registered {len(created_devices)} devices in NetBox")
+            
             # Update deployment state
             self.state["deployments"][deployment_id] = {
                 "lab_id": lab_id,
                 "version": version or "latest",
                 "deployed_at": datetime.now().isoformat(),
                 "log_file": result["log_file"],
-                "status": "active"
+                "status": "active",
+                "netbox_ips_allocated": bool(ip_assignments),
+                "ip_assignments": ip_assignments
             }
             self._save_state()
             
@@ -250,6 +308,11 @@ class LabManager:
                 "message": result["message"]
             }
         else:
+            # Rollback NetBox allocations if deployment failed
+            if ip_assignments and self.netbox:
+                logger.warning("Deployment failed, releasing allocated IPs")
+                self.netbox.release_ips(lab_id)
+                
             return {
                 "success": False,
                 "error": result.get("error", "Deployment failed")
@@ -276,6 +339,23 @@ class LabManager:
         success, result = self.clab_runner.teardown_lab(lab_id, repo_path)
         
         if success:
+            # Release NetBox resources if they were allocated
+            deployment_info = self.state["deployments"][active_deployment]
+            if deployment_info.get("netbox_ips_allocated") and self.netbox:
+                logger.info("Releasing NetBox resources...")
+                
+                # Release IPs
+                if self.netbox.release_ips(lab_id):
+                    logger.info("Released NetBox IPs successfully")
+                else:
+                    logger.warning("Failed to release some NetBox IPs")
+                    
+                # Unregister devices
+                if self.netbox.unregister_devices(lab_id):
+                    logger.info("Unregistered NetBox devices successfully")
+                else:
+                    logger.warning("Failed to unregister some NetBox devices")
+            
             # Update deployment state
             self.state["deployments"][active_deployment]["status"] = "destroyed"
             self.state["deployments"][active_deployment]["destroyed_at"] = datetime.now().isoformat()
@@ -364,6 +444,24 @@ class LabManager:
             "success": True,
             "message": f"Configuration scenario {scenario} applied",
             "note": "Implementation pending for clab-tools integration"
+        }
+    
+    def validate_netbox_config(self) -> Dict:
+        """Validate NetBox configuration and connectivity"""
+        if not self.netbox:
+            return {
+                "enabled": False,
+                "valid": True,
+                "message": "NetBox integration is disabled"
+            }
+            
+        is_valid, errors = self.netbox.validate_config()
+        
+        return {
+            "enabled": True,
+            "valid": is_valid,
+            "errors": errors,
+            "message": "NetBox configuration is valid" if is_valid else "NetBox configuration has errors"
         }
     
     def get_logs(self, deployment_id: str) -> Optional[str]:

@@ -3,6 +3,7 @@ System and server configuration CLI commands
 """
 import click
 import json
+import sys
 from rich.console import Console
 
 console = Console()
@@ -75,5 +76,38 @@ def version(ctx):
         console.print("[red]Backend Status: Unhealthy[/red]")
 
 
+@click.command()
+@click.pass_context
+def netbox(ctx):
+    """Validate NetBox configuration and connectivity"""
+    client = ctx.obj['client']
+    
+    # Check if backend is healthy first
+    if not client.health_check():
+        console.print("[red]Error: Cannot connect to backend[/red]")
+        console.print("[yellow]Make sure the backend is running[/yellow]")
+        sys.exit(1)
+    
+    # Call the validate endpoint
+    try:
+        response = client.session.get(f"{client.api_url}/api/netbox/validate")
+        response.raise_for_status()
+        result = response.json()
+        
+        if not result.get('enabled'):
+            console.print("[yellow]NetBox integration is disabled[/yellow]")
+            return
+            
+        if result.get('valid'):
+            console.print("[green]✓ NetBox configuration is valid[/green]")
+        else:
+            console.print("[red]✗ NetBox configuration has errors:[/red]")
+            for error in result.get('errors', []):
+                console.print(f"  - {error}")
+                
+    except Exception as e:
+        console.print(f"[red]Error validating NetBox: {e}[/red]")
+
+
 # Individual commands for easier import
-system_commands = [doctor, version]
+system_commands = [doctor, version, netbox]

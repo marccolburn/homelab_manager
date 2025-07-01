@@ -29,15 +29,16 @@ def temp_base_dir():
 
 
 @pytest.fixture
-def temp_dirs(temp_base_dir):
+def temp_dirs(temp_base_dir, request):
     """Create temporary directories for a single test"""
-    test_dir = temp_base_dir / f"test_{os.getpid()}"
+    test_name = request.node.name.replace('[', '_').replace(']', '_')
+    test_dir = temp_base_dir / f"test_{test_name}_{id(request)}"
     repos_dir = test_dir / 'repos'
     logs_dir = test_dir / 'logs'
     state_file = test_dir / 'state.json'
     
-    repos_dir.mkdir(parents=True)
-    logs_dir.mkdir(parents=True)
+    repos_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir.mkdir(parents=True, exist_ok=True)
     
     yield {
         'base': test_dir,

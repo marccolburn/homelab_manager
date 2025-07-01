@@ -42,19 +42,25 @@ fi
 
 # Check if backend URL is configured
 if [ -z "$LABCTL_API_URL" ]; then
-    # Check if local backend is running
+    # Check if local backend is running on common ports
     if command -v systemctl &> /dev/null && systemctl is-active --quiet labctl-backend 2>/dev/null; then
         export LABCTL_API_URL="http://localhost:5000"
+    elif curl -s -o /dev/null -w "%{http_code}" http://localhost:5001/api/health 2>/dev/null | grep -q "200"; then
+        export LABCTL_API_URL="http://localhost:5001"
     elif curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null | grep -q "200"; then
         export LABCTL_API_URL="http://localhost:5000"
     else
-        # No backend detected, but don't fail - let the CLI handle it
-        export LABCTL_API_URL="http://localhost:5000"
+        # Default to 5001 as that's the new default
+        export LABCTL_API_URL="http://localhost:5001"
     fi
 fi
 
 # Set Python path to include project root
 export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
 
+# Change to project root to avoid import issues
+cd "$PROJECT_ROOT"
+
 # Execute the CLI with all arguments passed through
-exec "$VENV_PYTHON" -m src.cli.main "$@"
+# Using -c to avoid the module import warning
+exec "$VENV_PYTHON" -c "import sys; sys.argv[0] = 'labctl'; from src.cli.main import cli; cli()" "$@"

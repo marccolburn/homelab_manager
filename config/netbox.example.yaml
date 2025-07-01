@@ -1,0 +1,40 @@
+# NetBox Integration Configuration Example
+# Copy this file to lab_manager_config.yaml and update with your NetBox details
+
+# Backend configuration
+repos_dir: "/opt/labctl/repos"
+logs_dir: "/opt/labctl/logs"
+state_file: "/opt/labctl/state.json"
+git_cmd: "git"
+clab_tools_cmd: "clab-tools"
+
+# NetBox integration settings
+netbox:
+  # Enable/disable NetBox integration
+  enabled: true
+  
+  # NetBox API URL (without /api/)
+  url: "https://netbox.example.com"
+  
+  # API token - Generate from NetBox user profile
+  token: "your-netbox-api-token-here"
+  
+  # Default IP prefix for lab allocations
+  # This prefix must exist in NetBox
+  default_prefix: "10.100.100.0/24"
+  
+  # Default site for lab devices
+  # Will be created if it doesn't exist
+  default_site: "Lab Environment"
+  
+  # Default device role
+  # Will be created if it doesn't exist
+  default_role: "Lab Device"
+  
+  # Cleanup behavior
+  cleanup_on_destroy: true  # Release IPs when lab is destroyed
+
+# Monitoring endpoints (optional)
+monitoring:
+  prometheus: "http://localhost:9090"
+  grafana: "http://localhost:3000"
