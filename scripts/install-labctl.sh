@@ -5,7 +5,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLI_SCRIPT="$SCRIPT_DIR/labctl.sh"
+CLI_SCRIPT="$SCRIPT_DIR/labctl"
 INSTALL_PATH="/usr/local/bin/labctl"
 
 echo "🚀 Installing Homelab Manager (All-in-One) on RHEL/Fedora..."
@@ -67,27 +67,14 @@ if [ ! -f "$PROJECT_ROOT/.venv/bin/python" ]; then
     fi
 fi
 
-# Create new CLI wrapper script
-CLI_WRAPPER="$PROJECT_ROOT/labctl"
-cat > "$CLI_WRAPPER" << EOF
-#!/bin/bash
-# labctl CLI wrapper - runs labctl with the virtual environment
+# Use the pre-made CLI wrapper script
+CLI_WRAPPER="$CLI_SCRIPT"
 
-SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
-VENV_PYTHON="\$SCRIPT_DIR/.venv/bin/python"
-
-# Check if virtual environment exists
-if [ ! -f "\$VENV_PYTHON" ]; then
-    echo "Error: Virtual environment not found at \$SCRIPT_DIR/.venv"
-    echo "Please run the installation script again"
+# Verify the wrapper exists
+if [ ! -f "$CLI_WRAPPER" ]; then
+    echo "❌ Error: CLI wrapper script not found at $CLI_WRAPPER"
     exit 1
 fi
-
-# Execute the CLI with all arguments passed through
-exec "\$VENV_PYTHON" -m src.cli.main "\$@"
-EOF
-
-chmod +x "$CLI_WRAPPER"
 
 # Check if clab-tools is installed
 if command -v clab-tools &> /dev/null; then

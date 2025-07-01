@@ -5,7 +5,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLI_SCRIPT="$SCRIPT_DIR/labctl.sh"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+CLI_SCRIPT="$SCRIPT_DIR/labctl"
 INSTALL_PATH="/usr/local/bin/labctl"
 
 echo "💻 Installing Homelab Manager CLI..."
@@ -33,10 +34,13 @@ echo "📋 Detected OS: $OS"
 
 # Check if the CLI script exists
 if [ ! -f "$CLI_SCRIPT" ]; then
-    echo "❌ Error: labctl.sh not found in $SCRIPT_DIR"
+    echo "❌ Error: labctl wrapper not found in $SCRIPT_DIR"
     echo "Make sure you've cloned the complete repository"
     exit 1
 fi
+
+# Make sure it's executable
+chmod +x "$CLI_SCRIPT"
 
 # Install Python dependencies
 echo "🐍 Installing Python dependencies..."
@@ -53,79 +57,69 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# Set up virtual environment in user space
-VENV_DIR="$HOME/.labctl"
-mkdir -p "$VENV_DIR"
-
-if [ ! -f "$VENV_DIR/bin/python" ]; then
-    echo "Setting up Python virtual environment..."
-    python3 -m venv "$VENV_DIR"
+# Create virtual environment if it doesn't exist
+if [ ! -d "$PROJECT_ROOT/.venv" ]; then
+    echo "🐍 Creating virtual environment..."
+    python3 -m venv "$PROJECT_ROOT/.venv"
 fi
 
 # Install CLI dependencies
-echo "Installing CLI dependencies..."
-"$VENV_DIR/bin/pip" install --upgrade pip
-
-# Get the project root
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+echo "📦 Installing dependencies..."
+"$PROJECT_ROOT/.venv/bin/pip" install --quiet --upgrade pip
 
 # Install from the appropriate requirements file
-if [ -f "$PROJECT_ROOT/requirements/frontend.txt" ]; then
-    "$VENV_DIR/bin/pip" install -r "$PROJECT_ROOT/requirements/frontend.txt"
-elif [ -f "$PROJECT_ROOT/requirements-frontend.txt" ]; then
-    "$VENV_DIR/bin/pip" install -r "$PROJECT_ROOT/requirements-frontend.txt"
+if [ -f "$PROJECT_ROOT/requirements/requirements-frontend.txt" ]; then
+    "$PROJECT_ROOT/.venv/bin/pip" install --quiet -r "$PROJECT_ROOT/requirements/requirements-frontend.txt"
+elif [ -f "$PROJECT_ROOT/requirements/frontend.txt" ]; then
+    "$PROJECT_ROOT/.venv/bin/pip" install --quiet -r "$PROJECT_ROOT/requirements/frontend.txt"
+elif [ -f "$PROJECT_ROOT/requirements.txt" ]; then
+    "$PROJECT_ROOT/.venv/bin/pip" install --quiet -r "$PROJECT_ROOT/requirements.txt"
 else
-    echo "❌ Could not find requirements-frontend.txt"
+    echo "❌ Could not find requirements file"
     exit 1
 fi
 
-# Copy the CLI module to user space
-cp -r "$PROJECT_ROOT/src" "$VENV_DIR/"
-
-# Update the CLI script to use the user's venv
-echo "🔧 Configuring CLI script..."
-cat > "$HOME/.labctl/labctl.sh" << 'EOF'
-#!/bin/bash
-# labctl CLI wrapper - calls the Python CLI with the user's virtual environment
-
-VENV_PYTHON="$HOME/.labctl/bin/python"
-CLI_DIR="$HOME/.labctl/src"
-
-# Check if virtual environment exists
-if [ ! -f "$VENV_PYTHON" ]; then
-    echo "Error: Virtual environment not found at $HOME/.labctl"
-    echo "Please run the frontend installation script again"
-    exit 1
+# Check if clab-tools is installed
+if command -v clab-tools &> /dev/null; then
+    echo "✅ Found clab-tools installation"
+else
+    echo "⚠️  Warning: clab-tools not found"
+    echo "   labctl requires clab-tools for lab deployments"
+    echo "   Please ensure clab-tools is installed and in your PATH"
 fi
 
-# Check if CLI module exists
-if [ ! -d "$CLI_DIR" ]; then
-    echo "Error: CLI module not found at $CLI_DIR"
-    exit 1
+# Determine installation location
+if [ -w "/usr/local/bin" ]; then
+    INSTALL_PATH="/usr/local/bin/labctl"
+    NEED_SUDO=false
+elif [ -d "$HOME/.local/bin" ]; then
+    INSTALL_PATH="$HOME/.local/bin/labctl"
+    NEED_SUDO=false
+    # Create directory if it doesn't exist
+    mkdir -p "$HOME/.local/bin"
+else
+    INSTALL_PATH="/usr/local/bin/labctl"
+    NEED_SUDO=true
 fi
-
-# Execute the CLI with all arguments passed through
-exec "$VENV_PYTHON" -m src.cli.main "$@"
-EOF
-
-# Make CLI script executable
-chmod +x "$HOME/.labctl/labctl.sh"
 
 # Create symlink
 echo "🔗 Installing CLI command..."
-if [ -w "/usr/local/bin" ]; then
-    ln -sf "$HOME/.labctl/labctl.sh" "$INSTALL_PATH"
-    echo "✅ CLI installed to $INSTALL_PATH"
+if [ "$NEED_SUDO" = true ]; then
+    echo "📝 Note: sudo required to install to $INSTALL_PATH"
+    sudo ln -sf "$CLI_SCRIPT" "$INSTALL_PATH"
 else
-    echo "📝 Creating CLI symlink (requires sudo)..."
-    sudo ln -sf "$HOME/.labctl/labctl.sh" "$INSTALL_PATH"
-    if [ $? -eq 0 ]; then
-        echo "✅ CLI installed to $INSTALL_PATH"
-    else
-        echo "⚠️  Could not install to $INSTALL_PATH"
-        echo "You can still use the CLI directly: $HOME/.labctl/labctl.sh"
-        echo "Or add $HOME/.labctl to your PATH"
-    fi
+    ln -sf "$CLI_SCRIPT" "$INSTALL_PATH"
+fi
+
+echo "✅ labctl installed to $INSTALL_PATH"
+
+# Check if installation directory is in PATH
+if ! echo "$PATH" | grep -q "$(dirname "$INSTALL_PATH")"; then
+    echo ""
+    echo "⚠️  Warning: $(dirname "$INSTALL_PATH") is not in your PATH"
+    echo "Add this line to your shell configuration file (~/.bashrc, ~/.zshrc, etc.):"
+    echo "  export PATH=\"$(dirname "$INSTALL_PATH"):\$PATH\""
+    echo ""
 fi
 
 # Prompt for backend URL

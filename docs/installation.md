@@ -6,6 +6,23 @@ This guide covers installing the Homelab Manager system on RHEL/Fedora systems. 
 2. **All-in-One**: Both backend and CLI on the same system  
 3. **CLI-Only**: Just the CLI tools for connecting to an existing backend
 
+## Project Structure
+
+After installation, the project has the following structure:
+
+```
+homelab-manager/
+├── src/                    # Source code
+│   ├── backend/           # Flask API backend
+│   ├── cli/              # CLI client
+│   └── web/              # Future web UI
+├── scripts/              # Installation scripts
+├── requirements/         # Dependency files
+├── config/              # Configuration templates
+├── tests/               # Test suite
+└── docs/                # Documentation
+```
+
 ## Prerequisites
 
 ### System Requirements
@@ -116,7 +133,8 @@ sudo ./install-labctl.sh
 **What the script does:**
 - Installs system dependencies
 - Sets up virtual environment with all dependencies
-- Installs CLI command
+- Creates labctl wrapper script that handles environment activation
+- Installs CLI command to /usr/local/bin or ~/.local/bin
 - Optionally installs and starts backend service
 - Configures firewalld if backend is installed
 - Sets up local API connection
@@ -219,6 +237,16 @@ journalctl -u labctl-backend --since "1 hour ago"
 # Restart after config changes
 systemctl restart labctl-backend
 ```
+
+## Understanding the labctl Wrapper
+
+The `labctl` command is a wrapper script that:
+- Automatically activates the Python virtual environment
+- Sets the correct Python path
+- Handles backend URL detection
+- Provides a seamless CLI experience
+
+The wrapper is located at `scripts/labctl` and gets symlinked to your PATH during installation.
 
 ## Verification and Testing
 
@@ -366,12 +394,12 @@ git clone git@github.com:user/test-repo.git
 **Alternative installation paths:**
 ```bash
 # Install to user directory instead
-mkdir -p ~/bin
-ln -sf "$(pwd)/labctl.sh" ~/bin/labctl
-export PATH="$HOME/bin:$PATH"
+mkdir -p ~/.local/bin
+ln -sf "$(pwd)/scripts/labctl" ~/.local/bin/labctl
+export PATH="$HOME/.local/bin:$PATH"
 
 # Or use the full path
-/path/to/homelab-manager/labctl.sh --help
+/path/to/homelab-manager/scripts/labctl --help
 ```
 
 ## Security Hardening

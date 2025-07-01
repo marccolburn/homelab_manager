@@ -1,0 +1,60 @@
+#!/bin/bash
+# labctl - Homelab Manager CLI
+# This is a standalone wrapper script that can be symlinked to PATH
+# It automatically handles virtual environment activation and Python path setup
+
+set -e
+
+# Determine the real path of this script (following symlinks)
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+
+# If readlink/realpath failed, use a more portable approach
+if [ "$SCRIPT_PATH" = "${BASH_SOURCE[0]}" ]; then
+    if [ -L "${BASH_SOURCE[0]}" ]; then
+        # It's a symlink but we couldn't resolve it
+        if command -v python3 &> /dev/null; then
+            SCRIPT_PATH="$(python3 -c "import os; print(os.path.realpath('${BASH_SOURCE[0]}'))")"
+        fi
+    fi
+fi
+
+# Get the directory containing this script
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+
+# Find the project root (parent of scripts directory)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Check if we're in the right location
+if [ ! -d "$PROJECT_ROOT/src" ]; then
+    echo "Error: Cannot find src directory. Expected at: $PROJECT_ROOT/src"
+    echo "Make sure labctl is installed correctly."
+    exit 1
+fi
+
+# Check for virtual environment
+VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+if [ ! -f "$VENV_PYTHON" ]; then
+    echo "Error: Virtual environment not found at $PROJECT_ROOT/.venv"
+    echo "Please run the installation script first:"
+    echo "  $PROJECT_ROOT/scripts/install-labctl.sh"
+    exit 1
+fi
+
+# Check if backend URL is configured
+if [ -z "$LABCTL_API_URL" ]; then
+    # Check if local backend is running
+    if command -v systemctl &> /dev/null && systemctl is-active --quiet labctl-backend 2>/dev/null; then
+        export LABCTL_API_URL="http://localhost:5000"
+    elif curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null | grep -q "200"; then
+        export LABCTL_API_URL="http://localhost:5000"
+    else
+        # No backend detected, but don't fail - let the CLI handle it
+        export LABCTL_API_URL="http://localhost:5000"
+    fi
+fi
+
+# Set Python path to include project root
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+
+# Execute the CLI with all arguments passed through
+exec "$VENV_PYTHON" -m src.cli.main "$@"

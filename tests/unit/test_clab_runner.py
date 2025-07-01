@@ -101,11 +101,14 @@ class TestClabRunner(unittest.TestCase):
     
     def test_validate_lab_files_missing(self):
         """Test validation of lab files - some missing"""
-        def exists_side_effect(path):
-            # Make bootstrap.sh missing
-            return 'bootstrap.sh' not in str(path)
+        # Mock Path objects
+        mock_path = Mock()
         
-        with patch('pathlib.Path.exists', side_effect=exists_side_effect):
+        def exists_side_effect(self):
+            # Make bootstrap.sh missing
+            return 'bootstrap.sh' not in str(self)
+        
+        with patch('pathlib.Path.exists', exists_side_effect):
             is_valid, missing = self.clab_runner.validate_lab_files(Path('/tmp/test-repo'))
         
         self.assertFalse(is_valid)

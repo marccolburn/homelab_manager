@@ -29,6 +29,15 @@ def run_integration_tests():
     result = runner.run(suite)
     return result.wasSuccessful()
 
+def run_e2e_tests():
+    """Run end-to-end tests"""
+    print("\nRunning end-to-end tests...")
+    loader = unittest.TestLoader()
+    suite = loader.discover('e2e', pattern='test_*.py')
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(suite)
+    return result.wasSuccessful()
+
 def main():
     """Run all tests"""
     os.chdir(Path(__file__).parent)
@@ -39,14 +48,16 @@ def main():
     
     unit_success = run_unit_tests()
     integration_success = run_integration_tests()
+    e2e_success = run_e2e_tests()
     
     print("\n" + "=" * 60)
     print("TEST RESULTS SUMMARY")
     print("=" * 60)
     print(f"Unit Tests: {'PASSED' if unit_success else 'FAILED'}")
     print(f"Integration Tests: {'PASSED' if integration_success else 'FAILED'}")
+    print(f"End-to-End Tests: {'PASSED' if e2e_success else 'FAILED'}")
     
-    if unit_success and integration_success:
+    if unit_success and integration_success and e2e_success:
         print("\n✅ All tests passed!")
         return 0
     else:

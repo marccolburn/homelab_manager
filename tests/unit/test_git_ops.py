@@ -70,7 +70,7 @@ class TestGitOperations(unittest.TestCase):
     @patch('subprocess.run')
     def test_get_tags(self, mock_run):
         """Test getting repository tags"""
-        mock_run.return_value = Mock(returncode=0, stdout='v1.0.0\\nv1.1.0\\nv2.0.0', stderr='')
+        mock_run.return_value = Mock(returncode=0, stdout='v1.0.0\nv1.1.0\nv2.0.0', stderr='')
         
         with patch.object(self.git_ops, 'is_git_repo', return_value=True):
             tags = self.git_ops.get_tags(Path('/tmp/test'))
