@@ -117,7 +117,7 @@ sequenceDiagram
 graph TD
     A[API Request] --> B{Validate Input}
     B -->|Invalid| C[Return 400 Error]
-    B -->|Valid| D[LabManager.method()]
+    B -->|Valid| D[LabManager method]
     D --> E{Check Prerequisites}
     E -->|Missing| F[Return Error]
     E -->|OK| G[Execute Operation]
