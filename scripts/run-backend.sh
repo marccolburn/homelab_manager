@@ -1,8 +1,14 @@
 #!/bin/bash
 # Development script to run the backend with the new structure
 
+# Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+
+# Get the project root directory (parent of scripts directory)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Change to project root
+cd "$PROJECT_ROOT"
 
 # Check if virtual environment exists
 if [ ! -f ".venv/bin/python" ]; then
@@ -21,8 +27,12 @@ if [ ! -f ".venv/bin/python" ]; then
     fi
 fi
 
-# Set Python path to include src directory
-export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
+# Set Python path to include project root directory
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+
+# Set environment variables for clab-tools
+# CLAB_TOOLS_PASSWORD should be set in the environment
+echo "CLAB_TOOLS_PASSWORD is $([ -n "$CLAB_TOOLS_PASSWORD" ] && echo "set" || echo "NOT set")"
 
 # Run the Flask backend
 echo "Starting Flask backend on http://localhost:5000"

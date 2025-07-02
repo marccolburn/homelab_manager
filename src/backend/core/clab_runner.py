@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
+from .config import load_config
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +54,20 @@ class ClabRunner:
     
     def bootstrap_lab(self, lab_id: str, repo_path: Path, 
                      deployment_id: Optional[str] = None) -> Tuple[bool, Dict]:
-        """Bootstrap a lab using the bootstrap.sh script"""
-        bootstrap_script = repo_path / "clab_tools_files" / "bootstrap.sh"
+        """Bootstrap a lab using clab-tools directly"""
+        clab_tools_dir = repo_path / "clab_tools_files"
+        config_file = clab_tools_dir / "config.yaml"
+        nodes_file = clab_tools_dir / "nodes.csv"
+        connections_file = clab_tools_dir / "connections.csv"
         
-        if not bootstrap_script.exists():
-            return False, {"error": "bootstrap.sh not found"}
+        # Validate required files exist
+        missing_files = []
+        for file_path, name in [(config_file, "config.yaml"), (nodes_file, "nodes.csv"), (connections_file, "connections.csv")]:
+            if not file_path.exists():
+                missing_files.append(name)
+        
+        if missing_files:
+            return False, {"error": f"Missing required files: {', '.join(missing_files)}"}
         
         # Create deployment ID if not provided
         if not deployment_id:
@@ -66,78 +76,214 @@ class ClabRunner:
         
         # Create log file
         log_file = self.logs_dir / f"{deployment_id}.log"
+        # Generate output file relative to repo directory (since we run clab-tools from there)
+        output_file = f"{lab_id}.clab.yml"
         
         logger.info(f"Bootstrapping lab {lab_id} with deployment ID {deployment_id}")
         
-        # Make bootstrap script executable
-        os.chmod(bootstrap_script, 0o755)
-        
-        # Set environment variables for the script
-        env = os.environ.copy()
-        env["LAB_ID"] = lab_id
-        env["DEPLOYMENT_ID"] = deployment_id
-        
-        # Run bootstrap script
-        result = subprocess.run(
-            [str(bootstrap_script)],
-            cwd=repo_path / "clab_tools_files",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env=env
-        )
-        
-        # Write output to log file
+        # Start logging
         with open(log_file, 'w') as log:
             log.write(f"=== Lab Bootstrap Log ===\n")
             log.write(f"Lab ID: {lab_id}\n")
             log.write(f"Deployment ID: {deployment_id}\n")
             log.write(f"Timestamp: {datetime.now().isoformat()}\n")
-            log.write(f"Script: {bootstrap_script}\n")
-            log.write(f"Exit Code: {result.returncode}\n")
-            log.write(f"\n=== Output ===\n")
-            log.write(result.stdout)
-        
-        if result.returncode == 0:
-            return True, {
-                "deployment_id": deployment_id,
-                "log_file": str(log_file),
-                "message": f"Lab {lab_id} deployed successfully"
-            }
-        else:
-            return False, {
-                "error": "Bootstrap failed",
-                "log_file": str(log_file),
-                "exit_code": result.returncode
-            }
+            log.write(f"Working Directory: {clab_tools_dir}\n")
+            log.write(f"Output File: {output_file}\n")
+            log.write(f"\n=== Deployment Steps ===\n")
+            
+            try:
+                # Set environment variables for clab-tools
+                env = os.environ.copy()
+                config = load_config()
+                
+                # Set password for remote operations
+                # Priority: 1) Environment variable, 2) Config file, 3) None
+                if not env.get('CLAB_TOOLS_PASSWORD'):
+                    config_password = config.get('clab_tools_password', '')
+                    if config_password:
+                        env['CLAB_TOOLS_PASSWORD'] = config_password
+                        log.write("Using clab_tools_password from configuration\n")
+                    else:
+                        log.write("Warning: CLAB_TOOLS_PASSWORD not set in environment or config\n")
+                else:
+                    log.write("Using CLAB_TOOLS_PASSWORD from environment variable\n")
+                
+                # Set remote-specific passwords for clab-tools remote operations
+                remote_creds = config.get('remote_credentials', {})
+                
+                if not env.get('CLAB_REMOTE_PASSWORD'):
+                    ssh_password = remote_creds.get('ssh_password') or env.get('CLAB_TOOLS_PASSWORD') or config.get('clab_tools_password', '')
+                    if ssh_password:
+                        env['CLAB_REMOTE_PASSWORD'] = ssh_password
+                        log.write("Using CLAB_REMOTE_PASSWORD from configuration\n")
+                    else:
+                        log.write("Warning: CLAB_REMOTE_PASSWORD not set, remote authentication may fail\n")
+                
+                if not env.get('CLAB_REMOTE_SUDO_PASSWORD'):
+                    sudo_password = remote_creds.get('sudo_password') or env.get('CLAB_TOOLS_PASSWORD') or config.get('clab_tools_password', '')
+                    if sudo_password:
+                        env['CLAB_REMOTE_SUDO_PASSWORD'] = sudo_password
+                        log.write("Using CLAB_REMOTE_SUDO_PASSWORD from configuration\n")
+                    else:
+                        log.write("Warning: CLAB_REMOTE_SUDO_PASSWORD not set, remote sudo operations may fail\n")
+                
+                # Step 1: Create lab
+                log.write("Step 1: Creating lab\n")
+                create_cmd = [self.clab_tools_cmd, "--quiet", "lab", "create", lab_id]
+                log.write(f"Command: {' '.join(create_cmd)}\n")
+                log.flush()
+                
+                result = subprocess.run(
+                    create_cmd,
+                    cwd=str(repo_path),  # Run from repo directory to use correct config
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    env=env
+                )
+                log.write(f"Exit Code: {result.returncode}\n")
+                log.write(f"Output:\n{result.stdout}\n")
+                log.flush()
+                
+                # Step 2: Switch to lab
+                log.write("Step 2: Switching to lab\n")
+                switch_cmd = [self.clab_tools_cmd, "--quiet", "lab", "switch", lab_id]
+                log.write(f"Command: {' '.join(switch_cmd)}\n")
+                log.flush()
+                
+                result = subprocess.run(
+                    switch_cmd,
+                    cwd=str(repo_path),  # Run from repo directory to use correct config
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    env=env
+                )
+                log.write(f"Exit Code: {result.returncode}\n")
+                log.write(f"Output:\n{result.stdout}\n")
+                log.flush()
+                
+                # Step 3: Use clab-tools lab bootstrap command (unified command)
+                log.write("Step 3: Running clab-tools lab bootstrap\n")
+                cmd = [
+                    self.clab_tools_cmd,
+                    "--quiet",
+                    "--config", "clab_tools_files/config.yaml",
+                    "lab", "bootstrap",
+                    "--nodes", "clab_tools_files/nodes.csv",
+                    "--connections", "clab_tools_files/connections.csv", 
+                    "--output", output_file,
+                ]
+                log.write(f"Command: {' '.join(cmd)}\n")
+                log.write(f"Working Directory: {repo_path}\n")
+                log.write(f"Environment Variables:\n")
+                for key in ['CLAB_TOOLS_PASSWORD', 'CLAB_REMOTE_PASSWORD', 'CLAB_REMOTE_SUDO_PASSWORD']:
+                    value = env.get(key, 'NOT SET')
+                    masked_value = '****' if value != 'NOT SET' else 'NOT SET'
+                    log.write(f"  {key}: {masked_value}\n")
+                log.write("Starting bootstrap command...\n")
+                log.flush()
+                
+                # Run clab-tools from the lab repo directory 
+                # This ensures it uses the correct config.yaml with remote settings
+                try:
+                    # Use Popen for real-time output streaming
+                    process = subprocess.Popen(
+                        cmd,
+                        cwd=str(repo_path),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        stdin=subprocess.DEVNULL,  # Prevent hanging on prompts
+                        text=True,
+                        env=env,
+                        bufsize=1,  # Line buffered
+                        universal_newlines=True
+                    )
+                    
+                    # Stream output in real-time
+                    log.write("Command output (real-time):\n")
+                    output_lines = []
+                    for line in process.stdout:
+                        log.write(f"OUT: {line}")
+                        log.flush()
+                        output_lines.append(line)
+                    
+                    # Wait for completion with timeout
+                    try:
+                        process.wait(timeout=90)
+                    except subprocess.TimeoutExpired:
+                        log.write("Command timed out, killing process...\n")
+                        process.kill()
+                        process.wait()
+                        raise
+                    
+                    result_stdout = ''.join(output_lines)
+                    log.write(f"Exit Code: {process.returncode}\n")
+                    log.write(f"Command completed.\n")
+                    log.flush()  # Ensure everything is written to disk
+                    
+                    if process.returncode == 0:
+                        log.write("✓ Lab bootstrap completed successfully\n")
+                        return True, {
+                            "deployment_id": deployment_id,
+                            "log_file": str(log_file),
+                            "message": f"Lab {lab_id} deployed successfully"
+                        }
+                    else:
+                        log.write("✗ Lab bootstrap failed\n")
+                        return False, {
+                            "error": "Bootstrap failed",
+                            "log_file": str(log_file),
+                            "exit_code": process.returncode,
+                            "output": result_stdout
+                        }
+                
+                except subprocess.TimeoutExpired:
+                    log.write("✗ Lab bootstrap timed out after 90 seconds\n")
+                    return False, {
+                        "error": "Bootstrap timed out",
+                        "log_file": str(log_file),
+                        "timeout": 90
+                    }
+                    
+            except Exception as e:
+                log.write(f"✗ Exception during bootstrap: {str(e)}\n")
+                return False, {
+                    "error": f"Exception during bootstrap: {str(e)}",
+                    "log_file": str(log_file)
+                }
     
     def teardown_lab(self, lab_id: str, repo_path: Path) -> Tuple[bool, Dict]:
-        """Teardown a lab using the teardown.sh script"""
-        teardown_script = repo_path / "clab_tools_files" / "teardown.sh"
+        """Teardown a lab using clab-tools directly"""
+        clab_tools_dir = repo_path / "clab_tools_files"
+        config_file = clab_tools_dir / "config.yaml"
         
-        if not teardown_script.exists():
-            return False, {"error": "teardown.sh not found"}
+        if not config_file.exists():
+            return False, {"error": "config.yaml not found"}
         
         logger.info(f"Tearing down lab {lab_id}")
         
-        # Make teardown script executable
-        os.chmod(teardown_script, 0o755)
+        # Use clab-tools lab teardown command
+        cmd = [
+            self.clab_tools_cmd,
+            "--config", "config.yaml",
+            "lab", "teardown"
+        ]
         
-        # Set environment variables for the script
-        env = os.environ.copy()
-        env["LAB_ID"] = lab_id
-        
-        # Run teardown script
         result = self._run_command(
-            [str(teardown_script)],
-            cwd=repo_path / "clab_tools_files",
-            capture_output=False
+            cmd,
+            cwd=clab_tools_dir,
+            capture_output=True
         )
         
         if result.returncode == 0:
             return True, {"message": f"Lab {lab_id} destroyed successfully"}
         else:
-            return False, {"error": "Teardown failed", "exit_code": result.returncode}
+            return False, {
+                "error": "Teardown failed", 
+                "exit_code": result.returncode,
+                "output": result.stderr
+            }
     
     def get_lab_status(self, lab_id: str, repo_path: Path) -> Dict:
         """Get the status of a deployed lab"""
@@ -210,9 +356,7 @@ class ClabRunner:
             "lab-metadata.yaml",
             "clab_tools_files/config.yaml",
             "clab_tools_files/nodes.csv",
-            "clab_tools_files/connections.csv",
-            "clab_tools_files/bootstrap.sh",
-            "clab_tools_files/teardown.sh"
+            "clab_tools_files/connections.csv"
         ]
         
         missing_files = []

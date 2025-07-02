@@ -175,5 +175,82 @@ const api = {
             console.error('Failed to validate NetBox:', error);
             throw error;
         }
+    },
+
+    // Settings management
+    async getSettings() {
+        try {
+            const response = await fetch('/api/config/settings');
+            if (!response.ok) throw new Error('Failed to fetch settings');
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to get settings:', error);
+            throw error;
+        }
+    },
+
+    async updateSettings(settings) {
+        try {
+            const response = await fetch('/api/config/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update settings');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to update settings:', error);
+            throw error;
+        }
+    },
+
+    async testConnections() {
+        try {
+            // Test basic health first
+            const health = await this.getHealth();
+            const results = {
+                'Backend API': {
+                    success: true,
+                    message: 'API is responding'
+                }
+            };
+
+            // Test NetBox if configured
+            try {
+                const netbox = await this.validateNetbox();
+                results['NetBox'] = {
+                    success: netbox.valid,
+                    message: netbox.message || (netbox.valid ? 'Connected successfully' : 'Connection failed')
+                };
+            } catch (error) {
+                results['NetBox'] = {
+                    success: false,
+                    message: error.message
+                };
+            }
+
+            return results;
+        } catch (error) {
+            console.error('Failed to test connections:', error);
+            throw error;
+        }
     }
 };
+
+// Create API client class for settings page
+class APIClient {
+    async getSettings() {
+        return api.getSettings();
+    }
+
+    async updateSettings(settings) {
+        return api.updateSettings(settings);
+    }
+
+    async testConnections() {
+        return api.testConnections();
+    }
+}

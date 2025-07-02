@@ -14,6 +14,7 @@ from .core.clab_runner import ClabRunner
 
 # Import API blueprints
 from .api import repos_bp, labs_bp, tasks_bp, health_bp
+from .api.settings import settings_bp
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -47,7 +48,7 @@ def create_app(test_config=None):
     app.lab_manager = lab_manager
     
     # Register blueprints
-    for blueprint in [repos_bp, labs_bp, tasks_bp, health_bp]:
+    for blueprint in [repos_bp, labs_bp, tasks_bp, health_bp, settings_bp]:
         app.register_blueprint(blueprint)
     
     # Debug route to check paths
@@ -67,6 +68,11 @@ def create_app(test_config=None):
     def index():
         """Serve the web UI"""
         return send_from_directory(app.static_folder, 'index.html')
+    
+    @app.route('/settings.html')
+    def settings():
+        """Serve the settings page"""
+        return send_from_directory(app.static_folder, 'settings.html')
     
     return app
 

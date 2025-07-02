@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Homelab Manager</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/settings.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <h1>🧪 Homelab Manager</h1>
+        </div>
+        <div class="navbar-nav">
+            <a href="/">Home</a>
+            <a href="/settings.html" class="active">Settings</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h2>⚙️ Settings</h2>
+            <p>Configure remote credentials and system settings</p>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer"></div>
+
+        <!-- Settings Form -->
+        <div class="settings-panel">
+            <form id="settingsForm">
+                <!-- Remote Credentials Section -->
+                <div class="settings-section">
+                    <h3>🔐 Remote Credentials</h3>
+                    <p class="section-description">Configure passwords for remote lab host operations</p>
+                    
+                    <div class="form-group">
+                        <label for="clabToolsPassword">clab-tools Password:</label>
+                        <input type="password" id="clabToolsPassword" name="clab_tools_password" 
+                               placeholder="Password for clab-tools operations">
+                        <small>Used for remote clab-tools operations</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sshPassword">SSH Password:</label>
+                        <input type="password" id="sshPassword" name="ssh_password" 
+                               placeholder="SSH password for remote host">
+                        <small>Password for SSH authentication to remote lab host</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sudoPassword">Sudo Password:</label>
+                        <input type="password" id="sudoPassword" name="sudo_password" 
+                               placeholder="Sudo password for remote host">
+                        <small>Password for sudo operations on remote lab host</small>
+                    </div>
+                </div>
+
+                <!-- NetBox Section -->
+                <div class="settings-section">
+                    <h3>🌐 NetBox Integration</h3>
+                    <p class="section-description">Configure NetBox for dynamic IP allocation</p>
+                    
+                    <div class="form-group">
+                        <label for="netboxEnabled">
+                            <input type="checkbox" id="netboxEnabled" name="netbox_enabled">
+                            Enable NetBox Integration
+                        </label>
+                    </div>
+
+                    <div class="form-group" id="netboxUrlGroup">
+                        <label for="netboxUrl">NetBox URL:</label>
+                        <input type="url" id="netboxUrl" name="netbox_url" 
+                               placeholder="https://netbox.example.com">
+                    </div>
+
+                    <div class="form-group" id="netboxTokenGroup">
+                        <label for="netboxToken">API Token:</label>
+                        <input type="password" id="netboxToken" name="netbox_token" 
+                               placeholder="NetBox API token">
+                    </div>
+
+                    <div class="form-group" id="netboxPrefixGroup">
+                        <label for="netboxPrefix">Default Prefix:</label>
+                        <input type="text" id="netboxPrefix" name="netbox_prefix" 
+                               placeholder="10.100.100.0/24" value="10.100.100.0/24">
+                    </div>
+                </div>
+
+                <!-- Monitoring Section -->
+                <div class="settings-section">
+                    <h3>📊 Monitoring</h3>
+                    <p class="section-description">Configure monitoring system URLs</p>
+                    
+                    <div class="form-group">
+                        <label for="prometheusUrl">Prometheus URL:</label>
+                        <input type="url" id="prometheusUrl" name="prometheus_url" 
+                               placeholder="http://localhost:9090" value="http://localhost:9090">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="grafanaUrl">Grafana URL:</label>
+                        <input type="url" id="grafanaUrl" name="grafana_url" 
+                               placeholder="http://localhost:3000" value="http://localhost:3000">
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="form-actions">
+                    <button type="button" id="testConnectionBtn" class="btn btn-secondary">
+                        🔍 Test Connection
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        💾 Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Connection Test Results -->
+        <div id="connectionTestResults" class="test-results" style="display: none;">
+            <h3>🔍 Connection Test Results</h3>
+            <div id="testResultsContent"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/settings.js"></script>
+</body>
+</html>
