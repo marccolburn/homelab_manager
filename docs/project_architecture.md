@@ -235,14 +235,14 @@ classDiagram
 ```mermaid
 graph TD
     A[Add Repository Request] --> B[Validate Git URL]
-    B --> C[GitOps.clone()]
+    B --> C["GitOps.clone()"]
     C --> D[Read lab-metadata.yaml]
     D --> E[Parse Lab Information]
     E --> F[Update State File]
     F --> G[Return Lab Info]
     
-    H[Update Repository] --> I[GitOps.pull()]
-    I --> J[GitOps.get_tags()]
+    H[Update Repository] --> I["GitOps.pull()"]
+    I --> J["GitOps.get_tags()"]
     J --> K[Update Metadata]
     K --> L[Return Changes]
 ```
@@ -253,13 +253,13 @@ graph TD
 graph TD
     A[Deploy Request] --> B[Validate Lab Exists]
     B --> C[Check Version/Tag]
-    C --> D[GitOps.checkout()]
+    C --> D["GitOps.checkout()"]
     D --> E{NetBox Enabled?}
-    E -->|Yes| F[NetBox.allocate_ips()]
+    E -->|Yes| F["NetBox.allocate_ips()"]
     E -->|No| G[Use Static IPs]
     F --> H[Update nodes.csv]
     G --> H
-    H --> I[ClabRunner.run_bootstrap()]
+    H --> I["ClabRunner.run_bootstrap()"]
     I --> J[Monitor Process]
     J --> K[Update Deployment State]
     K --> L[Return Success]
