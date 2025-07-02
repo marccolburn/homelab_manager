@@ -1,222 +1,131 @@
-# Homelab Manager - Quick Start Guide
+# Quick Start Guide
 
-Get up and running with Homelab Manager in 5 minutes! This guide covers the most common setup scenarios.
+Get up and running with Homelab Manager in 5 minutes.
 
 ## Prerequisites
 
-Before starting, ensure you have:
-- Python 3.8 or higher
-- Git
-- clab-tools installed (for lab deployments)
-- A Linux/macOS system (RHEL/Fedora recommended for backend)
+- Python 3.11+ installed
+- `clab-tools` installed and working
+- SSH access to a lab host (for remote deployments)
 
-## Installation Options
-
-### Option 1: All-in-One Installation (Recommended for Testing)
-
-Perfect for getting started quickly on a single machine:
+## Step 1: Install
 
 ```bash
-# Clone the repository
 git clone https://github.com/your-org/homelab-manager.git
 cd homelab-manager
-
-# Run the all-in-one installer
 ./scripts/install-labctl.sh
 ```
 
-This installs both the CLI and backend service on the same machine.
+## Step 2: Start Backend
 
-### Option 2: Separate Backend and CLI (Recommended for Production)
-
-**On your lab server (RHEL/Fedora):**
 ```bash
-# Clone and install backend
-git clone https://github.com/your-org/homelab-manager.git
-cd homelab-manager
-sudo ./scripts/install-backend.sh
+./scripts/run-backend.sh
 ```
 
-**On your workstation:**
-```bash
-# Clone and install CLI only
-git clone https://github.com/your-org/homelab-manager.git
-cd homelab-manager
-./scripts/install-frontend.sh
+The backend starts on `http://localhost:5001`
 
-# When prompted, enter your backend URL:
-# http://your-lab-server:5000
+## Step 3: Configure Remote Access
+
+### Option A: Web UI (Recommended)
+1. Open `http://localhost:5001/settings.html`
+2. Enter your remote host credentials:
+   - SSH Password
+   - Sudo Password (if needed)
+3. Click "Save Settings"
+4. Click "Test Connection" to verify
+
+### Option B: Command Line
+```bash
+# Configure via environment variables
+export CLAB_TOOLS_PASSWORD="your-password"
+export CLAB_REMOTE_PASSWORD="ssh-password"
+export CLAB_REMOTE_SUDO_PASSWORD="sudo-password"
 ```
 
-## First Steps
+## Step 4: Add a Lab Repository
 
-### 1. Verify Installation
+### Web UI
+1. Go to `http://localhost:5001`
+2. Click "Repositories" tab
+3. Click "➕ Add Repository"
+4. Enter Git URL: `git@github.com:user/lab-repo.git`
+5. Click "Add Repository"
 
+### CLI
 ```bash
-# Check CLI is working
-labctl --help
-
-# Check backend connection (if using remote backend)
-labctl version
+labctl repo add git@github.com:user/lab-repo.git
 ```
 
-### 2. Add Your First Lab
+## Step 5: Deploy Your First Lab
 
+### Web UI
+1. Go to "Labs" tab
+2. Find your lab
+3. Select version (latest/specific tag)
+4. Optional: Check "Allocate IPs" for NetBox integration
+5. Click "Deploy"
+6. Monitor progress in "Active Deployments" tab
+
+### CLI
 ```bash
-# Add a lab repository
-labctl repo add https://github.com/example/my-lab.git
-
 # List available labs
 labctl repo list
-```
 
-### 3. Deploy a Lab
-
-```bash
-# Deploy the latest version
-labctl deploy my-lab
-
-# Deploy a specific version
-labctl deploy my-lab v1.0.0
+# Deploy a lab
+labctl deploy lab-name
 
 # Check deployment status
 labctl status
-```
-
-### 4. Manage Lab Configurations
-
-```bash
-# List available configuration scenarios
-labctl config list my-lab
-
-# Apply a configuration scenario
-labctl config apply my-lab baseline
 
 # View deployment logs
-labctl logs my-lab
+labctl logs lab-name
 ```
 
-### 5. Clean Up
+## Step 6: Manage Your Lab
 
-```bash
-# Destroy a deployed lab
-labctl destroy my-lab
+### View Active Deployments
+- **Web UI**: "Active Deployments" tab shows running labs
+- **CLI**: `labctl status`
 
-# Remove a lab repository
-labctl repo remove my-lab
-```
+### Destroy a Lab
+- **Web UI**: Click "Destroy" button in Active Deployments
+- **CLI**: `labctl destroy lab-name`
 
-## Common Workflows
-
-### Updating Labs
-
-Pull the latest changes from a lab repository:
-
-```bash
-labctl repo update my-lab
-```
-
-### Working with Versions
-
-Labs use Git tags for versioning:
-
-```bash
-# Deploy a specific tagged version
-labctl deploy my-lab v2.1.0
-
-# Deploy from a specific branch
-labctl deploy my-lab --branch develop
-```
-
-### Configuration Scenarios
-
-Apply different configurations to your deployed lab:
-
-```bash
-# Start with baseline configuration
-labctl config apply my-lab baseline
-
-# Switch to advanced scenario
-labctl config apply my-lab advanced-bgp
-
-# Reset to defaults
-labctl config apply my-lab reset
-```
-
-## Environment Variables
-
-### Backend Connection
-```bash
-# Set backend URL (if not using local backend)
-export LABCTL_API_URL="http://lab-server:5000"
-```
-
-### Custom Lab Repository Path
-```bash
-# Change where labs are cloned (default: ~/lab_repos)
-export LAB_REPOS_PATH="/opt/labs"
-```
-
-## Troubleshooting
-
-### CLI Can't Connect to Backend
-
-1. Check backend is running:
-   ```bash
-   systemctl status labctl-backend
-   ```
-
-2. Verify backend URL:
-   ```bash
-   echo $LABCTL_API_URL
-   curl $LABCTL_API_URL/api/health
-   ```
-
-3. Check firewall settings:
-   ```bash
-   sudo firewall-cmd --list-ports
-   ```
-
-### Lab Deployment Fails
-
-1. Check clab-tools is installed:
-   ```bash
-   which clab-tools
-   ```
-
-2. Verify lab repository structure:
-   ```bash
-   ls -la ~/lab_repos/my-lab/clab_tools_files/
-   ```
-
-3. Check deployment logs:
-   ```bash
-   labctl logs my-lab
-   ```
-
-### Permission Issues
-
-If you get permission errors:
-
-```bash
-# For backend service
-sudo systemctl restart labctl-backend
-sudo journalctl -u labctl-backend -f
-
-# For lab deployments
-sudo chown -R $USER:$USER ~/lab_repos
-```
+### View Logs
+- **Web UI**: Click "View Logs" in Active Deployments
+- **CLI**: `labctl logs lab-name`
 
 ## Next Steps
 
-- Read the [CLI Command Reference](commands.md) for detailed command usage
-- Learn about [Lab Repository Structure](../CLAUDE.md#lab-repository-standard)
-- Configure [NetBox Integration](configuration.md#netbox-integration) for dynamic IP management
-- Explore [API Documentation](api.md) for automation
+- **[Web UI Guide](web-ui-guide.md)** - Detailed web interface usage
+- **[CLI Reference](commands.md)** - Complete command documentation
+- **[Configuration](configuration.md)** - Advanced settings and NetBox setup
 
-## Getting Help
+## Troubleshooting
 
-- Run `labctl --help` for command help
-- Check logs: `journalctl -u labctl-backend -f`
-- Visit project documentation: `docs/`
-- Report issues: https://github.com/your-org/homelab-manager/issues
+### Backend Won't Start
+```bash
+# Check if port 5001 is in use
+lsof -i :5001
+
+# Check logs
+tail -f ~/.labctl/logs/backend.log
+```
+
+### Can't Connect to Remote Host
+1. Verify SSH access: `ssh user@remote-host`
+2. Check credentials in Settings page
+3. Ensure `clab-tools` is installed on remote host
+
+### Repository Add Fails
+1. Verify Git URL format
+2. Check SSH key access for private repos
+3. Ensure repo has required lab structure
+
+### Deployment Fails
+1. Check deployment logs in Web UI or CLI
+2. Verify remote host connectivity
+3. Check Settings configuration
+4. Ensure sufficient resources on remote host
+
+For more help, see the complete documentation in the `docs/` directory.

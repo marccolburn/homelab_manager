@@ -1,575 +1,368 @@
 # Configuration Guide
 
-This guide covers all configuration options for Homelab Manager, including environment variables, configuration files, and advanced settings.
-
-## Configuration Overview
-
-Homelab Manager uses multiple configuration methods:
-1. **Environment Variables** - Runtime configuration
-2. **Configuration Files** - Persistent settings
-3. **Command-line Arguments** - Override settings
-4. **Default Values** - Built-in defaults
-
-Configuration priority (highest to lowest):
-1. Command-line arguments
-2. Environment variables
-3. Configuration files
-4. Default values
-
-## Environment Variables
-
-### Core Settings
-
-#### LABCTL_API_URL
-Sets the backend API URL for the CLI client.
-
-```bash
-export LABCTL_API_URL="http://lab-server:5000"
-
-# For HTTPS with custom port
-export LABCTL_API_URL="https://lab-api.example.com:8443"
-
-# For SSH tunnel
-export LABCTL_API_URL="http://localhost:5000"
-```
-
-#### LAB_REPOS_PATH
-Directory where lab repositories are cloned.
-
-```bash
-# Default: ~/lab_repos
-export LAB_REPOS_PATH="/opt/labs"
-
-# For shared lab storage
-export LAB_REPOS_PATH="/mnt/shared/labs"
-```
-
-#### LABCTL_LOG_LEVEL
-Controls logging verbosity.
-
-```bash
-# Options: DEBUG, INFO, WARNING, ERROR
-export LABCTL_LOG_LEVEL="DEBUG"
-```
-
-### Backend-Specific Variables
-
-#### FLASK_ENV
-Flask application environment.
-
-```bash
-# For development
-export FLASK_ENV="development"
-
-# For production (default)
-export FLASK_ENV="production"
-```
-
-#### LABCTL_BACKEND_PORT
-Port for the backend API server.
-
-```bash
-# Default: 5000
-export LABCTL_BACKEND_PORT="8080"
-```
-
-#### LABCTL_BACKEND_HOST
-Host binding for the backend server.
-
-```bash
-# Default: 0.0.0.0 (all interfaces)
-export LABCTL_BACKEND_HOST="127.0.0.1"  # Local only
-```
+Complete guide to configuring Homelab Manager settings, including all available options and their defaults.
 
 ## Configuration Files
 
-### Backend Configuration
+### Backend Configuration: `~/.labctl/config.yaml`
 
-The backend looks for configuration in these locations (in order):
-1. `/etc/homelab-manager/config.yaml`
-2. `~/.config/homelab-manager/config.yaml`
-3. `./lab_manager_config.yaml` (current directory)
+This is the main configuration file used by the backend. It's created automatically with defaults on first run.
 
-**Example backend configuration (`lab_manager_config.yaml`):**
+**Location**: `~/.labctl/config.yaml`
+**Format**: YAML
+**Access**: Editable via Web UI Settings page or direct file editing
 
-```yaml
-# Server Configuration
-server:
-  host: "0.0.0.0"
-  port: 5000
-  debug: false
-  
-# Lab Repository Settings
-labs:
-  base_path: "~/lab_repos"
-  git_timeout: 300  # seconds
-  max_concurrent_deployments: 3
-  
-# Deployment Settings
-deployment:
-  log_retention_days: 30
-  state_file: "~/.homelab-manager/state.json"
-  cleanup_on_failure: true
-  
-# Security Settings
-security:
-  api_key_required: false
-  allowed_origins: ["*"]
-  max_request_size: "16MB"
-  
-# Logging Configuration
-logging:
-  level: "INFO"
-  file: "/var/log/homelab-manager/backend.log"
-  max_size: "100MB"
-  backup_count: 5
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-```
+## Configuration Sections
 
-### CLI Configuration
-
-The CLI looks for configuration in:
-1. `~/.config/labctl/config.yaml`
-2. Environment variables
-
-**Example CLI configuration (`~/.config/labctl/config.yaml`):**
+### Basic Settings
 
 ```yaml
-# API Connection
-api:
-  url: "http://lab-server:5000"
-  timeout: 30
-  verify_ssl: true
-  
-# Display Settings
-display:
-  color: true
-  progress_bars: true
-  table_format: "grid"  # Options: grid, simple, fancy_grid
-  
-# CLI Behavior
-cli:
-  confirm_destructive: true
-  auto_refresh_status: false
-  default_version: "latest"
+# Default configuration
+repos_dir: "/Users/username/.labctl/repos"       # Where lab repositories are stored
+logs_dir: "/Users/username/.labctl/logs"         # Where deployment logs are stored
+state_file: "/Users/username/.labctl/state.json" # Application state file
+clab_tools_cmd: "clab-tools"                     # clab-tools command path
+git_cmd: "git"                                   # Git command path
 ```
 
-## NetBox Integration
+### Remote Credentials
 
-### Basic Configuration
-
-Configure NetBox integration for dynamic IP allocation:
+Configure passwords for remote lab host operations:
 
 ```yaml
-# In lab_manager_config.yaml
-netbox:
-  enabled: true
-  url: "https://netbox.example.com"
-  token: "your-api-token-here"
-  verify_ssl: true
-  
-  # IP Allocation Settings
-  allocation:
-    prefix: "10.100.100.0/24"      # Default prefix for labs
-    site: "Lab Environment"         # NetBox site name
-    role: "Lab Device"             # Device role
-    tenant: "Lab Team"             # Optional tenant
-    
-  # Cleanup Settings
-  cleanup:
-    on_destroy: true               # Release IPs when lab destroyed
-    grace_period: 300              # Seconds before cleanup
-    
-  # Device Registration
-  devices:
-    manufacturer: "Virtual"
-    device_type: "container"
-    platform: "linux"
+clab_tools_password: ""                          # Password for clab-tools operations
+remote_credentials:
+  ssh_password: ""                               # SSH password for remote host
+  sudo_password: ""                              # Sudo password for remote host
 ```
 
-### Advanced NetBox Settings
+**Setting via Web UI**: 
+- Go to `http://localhost:5001/settings.html`
+- Configure in "Remote Credentials" section
+- Passwords are stored encrypted and masked in the UI
 
-```yaml
-netbox:
-  # ... basic settings ...
-  
-  # Custom Fields
-  custom_fields:
-    lab_id: true
-    deployment_date: true
-    owner: true
-    
-  # IP Pool Management
-  pools:
-    management:
-      prefix: "10.100.100.0/24"
-      description: "Lab Management Network"
-    data:
-      prefix: "10.100.101.0/24"
-      description: "Lab Data Network"
-      
-  # Tagging
-  tags:
-    - "lab-device"
-    - "containerlab"
-    - "automated"
-```
-
-### Environment Variable Override
-
+**Environment Variable Override**:
 ```bash
-# Override NetBox settings via environment
-export NETBOX_URL="https://netbox.example.com"
-export NETBOX_TOKEN="your-token"
-export NETBOX_VERIFY_SSL="false"  # For self-signed certs
+export CLAB_TOOLS_PASSWORD="your-password"
+export CLAB_REMOTE_PASSWORD="ssh-password"  
+export CLAB_REMOTE_SUDO_PASSWORD="sudo-password"
 ```
+
+### NetBox Integration
+
+Configure NetBox for dynamic IP allocation:
+
+```yaml
+netbox:
+  enabled: false                                 # Enable NetBox integration
+  url: ""                                        # NetBox instance URL
+  token: ""                                      # NetBox API token
+  default_prefix: "10.100.100.0/24"            # Default IP prefix for labs
+  default_site: "Lab Environment"               # Default site name
+  default_role: "Lab Device"                    # Default device role
+  cleanup_on_destroy: true                      # Release IPs when lab destroyed
+```
+
+**Setting via Web UI**:
+- Go to Settings page → "NetBox Integration" section
+- Toggle "Enable NetBox Integration"
+- Configure URL, token, and prefix
+- Use "Test Connection" to verify
+
+**NetBox Requirements**:
+- NetBox 3.0+ with API access
+- API token with IP and device management permissions
+- Configured prefix for lab management networks
+- Site and device role must exist in NetBox
+
+### Monitoring
+
+Configure monitoring system URLs:
+
+```yaml
+monitoring:
+  prometheus: "http://localhost:9090"           # Prometheus URL
+  grafana: "http://localhost:3000"             # Grafana URL
+```
+
+**Setting via Web UI**:
+- Go to Settings page → "Monitoring" section
+- Configure Prometheus and Grafana URLs
 
 ## Lab Repository Configuration
 
-### lab-metadata.yaml
+Each lab repository contains its own configuration in `clab_tools_files/config.yaml`:
 
-Each lab repository must contain a `lab-metadata.yaml` file:
+### Basic Lab Config
 
 ```yaml
-# Required fields
-name: "BGP Advanced Lab"
+# Lab-specific clab-tools configuration
+topology:
+  default_topology_name: "my-lab"
+  default_mgmt_subnet: "10.100.100.0/24"
+```
+
+### Remote Deployment Config
+
+```yaml
+# Remote host configuration for clab-tools
+remote:
+  enabled: true
+  host: "10.1.91.4"                            # Remote lab host IP
+  user: "username"                             # SSH username
+  topology_remote_dir: "/home/username/labs"   # Remote storage directory
+  # Passwords come from backend configuration or environment variables
+```
+
+### Lab Metadata: `lab-metadata.yaml`
+
+```yaml
+# Lab discovery and management metadata
+name: "BGP Advanced Features Lab"
 id: "bgp-advanced"
 version: "1.0.0"
-
-# Optional fields
 category: "Routing"
 vendor: "Juniper"
 difficulty: "Intermediate"
-
-# Description
 description:
-  short: "Advanced BGP features and policies"
+  short: "BGP communities, route reflection, and policies"
   long: |
-    Comprehensive lab covering:
-    - BGP communities
-    - Route reflection
-    - Complex policies
-
-# Resource requirements
+    Detailed description of the lab...
 requirements:
   memory_gb: 32
   cpu_cores: 16
   disk_gb: 40
   containerlab_version: ">=0.48.0"
-
-# Platform (for future multi-platform support)
 platform: "containerlab"
-
-# Tags for searchability
+netbox:
+  enabled: true
+  prefix: "10.100.100.0/24"
+  site: "Lab Environment"
+  role: "Lab Device"
 tags:
   - bgp
   - routing
-  - service-provider
-
-# Git repository info
+  - juniper
 repository:
-  url: "git@github.com:org/bgp-advanced.git"
+  url: "git@github.com:user/bgp-advanced-lab.git"
   branch: "main"
-  
-# NetBox integration (optional)
-netbox:
-  enabled: true
-  prefix: "10.100.200.0/24"  # Override default
-  site: "BGP Lab"
-  
-# Custom variables (passed to deployment scripts)
-variables:
-  region: "us-east"
-  environment: "training"
 ```
 
-## Systemd Service Configuration
+## Configuration Methods
 
-### Backend Service
+### 1. Web UI Settings (Recommended)
 
-The systemd service file is installed at `/etc/systemd/system/labctl-backend.service`:
+**Access**: `http://localhost:5001/settings.html`
 
-```ini
-[Unit]
-Description=Homelab Manager Backend API
-After=network.target
+**Features**:
+- Secure password input with masking
+- Real-time validation
+- Connection testing
+- Form validation and error handling
 
-[Service]
-Type=simple
-User=labctl
-Group=labctl
-WorkingDirectory=/opt/homelab-manager
+**Sections**:
+- Remote Credentials: SSH/sudo passwords
+- NetBox Integration: URL, token, settings
+- Monitoring: Prometheus/Grafana URLs
 
-# Environment
-Environment="PATH=/opt/homelab-manager/.venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="FLASK_ENV=production"
-Environment="PYTHONUNBUFFERED=1"
+### 2. Direct File Editing
 
-# Custom environment file (optional)
-EnvironmentFile=-/etc/homelab-manager/environment
-
-# Start command
-ExecStart=/opt/homelab-manager/.venv/bin/python -m src.backend.app
-
-# Restart policy
-Restart=on-failure
-RestartSec=10
-
-# Security
-NoNewPrivileges=true
-PrivateTmp=true
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=labctl-backend
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### Custom Environment File
-
-Create `/etc/homelab-manager/environment` for additional settings:
+Edit `~/.labctl/config.yaml` directly:
 
 ```bash
-# API Configuration
-LABCTL_BACKEND_PORT=8080
-LABCTL_LOG_LEVEL=INFO
+# Open configuration file
+nano ~/.labctl/config.yaml
 
-# NetBox Integration
-NETBOX_URL=https://netbox.example.com
-NETBOX_TOKEN=your-secure-token
-
-# Lab Settings
-LAB_REPOS_PATH=/var/lib/homelab-manager/labs
+# Restart backend to apply changes
+./scripts/run-backend.sh
 ```
 
-## Security Configuration
+### 3. Environment Variables
 
-### API Authentication (Future Feature)
-
-```yaml
-# In lab_manager_config.yaml
-security:
-  authentication:
-    enabled: true
-    type: "token"  # Options: token, oauth, ldap
-    
-  # Token Authentication
-  token:
-    header: "X-API-Token"
-    expiry: 86400  # seconds
-    
-  # Rate Limiting
-  rate_limit:
-    enabled: true
-    requests_per_minute: 60
-    burst: 10
-```
-
-### SSL/TLS Configuration
-
-For production deployments, use a reverse proxy:
-
-```nginx
-# /etc/nginx/conf.d/labctl.conf
-server {
-    listen 443 ssl http2;
-    server_name lab-api.example.com;
-    
-    ssl_certificate /etc/ssl/certs/labctl.crt;
-    ssl_certificate_key /etc/ssl/private/labctl.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    
-    location / {
-        proxy_pass http://localhost:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # Timeouts for long-running operations
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 10s;
-    }
-}
-```
-
-## Monitoring Configuration
-
-### Prometheus Metrics (Future Feature)
-
-```yaml
-# In lab_manager_config.yaml
-monitoring:
-  prometheus:
-    enabled: true
-    port: 9090
-    path: "/metrics"
-    
-  # Custom metrics
-  metrics:
-    - lab_deployments_total
-    - lab_deployment_duration_seconds
-    - active_labs_gauge
-    - api_request_duration_seconds
-```
-
-### Logging Configuration
-
-```yaml
-logging:
-  # Console logging
-  console:
-    enabled: true
-    level: "INFO"
-    
-  # File logging
-  file:
-    enabled: true
-    path: "/var/log/homelab-manager/backend.log"
-    level: "DEBUG"
-    rotation:
-      max_size: "100MB"
-      backup_count: 5
-      
-  # Syslog forwarding
-  syslog:
-    enabled: false
-    host: "syslog.example.com"
-    port: 514
-    facility: "local0"
-```
-
-## Performance Tuning
-
-### Backend Performance
-
-```yaml
-# In lab_manager_config.yaml
-performance:
-  # Worker settings
-  workers:
-    processes: 4  # For production with gunicorn
-    threads: 2
-    
-  # Connection pooling
-  database:
-    pool_size: 10
-    max_overflow: 20
-    
-  # Caching
-  cache:
-    enabled: true
-    backend: "redis"  # Future feature
-    ttl: 300
-```
-
-### Git Operations
-
-```yaml
-labs:
-  git:
-    # Concurrent operations
-    max_concurrent_clones: 3
-    max_concurrent_pulls: 5
-    
-    # Timeouts
-    clone_timeout: 600  # seconds
-    fetch_timeout: 120
-    
-    # Performance
-    shallow_clone: false
-    single_branch: true
-```
-
-## Troubleshooting Configuration
-
-### Debug Mode
-
-Enable detailed debugging:
+Override configuration with environment variables:
 
 ```bash
-# Via environment
-export LABCTL_LOG_LEVEL="DEBUG"
-export FLASK_ENV="development"
+# Remote credentials
+export CLAB_TOOLS_PASSWORD="password"
+export CLAB_REMOTE_PASSWORD="ssh-password"
+export CLAB_REMOTE_SUDO_PASSWORD="sudo-password"
 
-# Via config file
-logging:
-  level: "DEBUG"
-  
-server:
-  debug: true
+# NetBox settings
+export NETBOX_URL="http://netbox.example.com"
+export NETBOX_TOKEN="api-token"
+
+# Start backend with environment overrides
+./scripts/run-backend.sh
 ```
 
-### Configuration Validation
+## Security Considerations
 
-Test configuration without starting services:
+### Password Storage
+
+- Passwords stored in `~/.labctl/config.yaml` are **not encrypted**
+- File permissions should be `600` (user read/write only)
+- Web UI masks passwords but stores them in plain text
+- Environment variables are preferred for CI/CD environments
+
+### File Permissions
 
 ```bash
-# Validate backend config
-python -m src.backend.app --validate-config
+# Secure configuration file
+chmod 600 ~/.labctl/config.yaml
 
-# Test NetBox connection
-python -m src.backend.integrations.netbox --test
-
-# Check lab repository
-labctl repo validate <lab-id>
+# Secure log directory
+chmod 750 ~/.labctl/logs/
 ```
 
-## Best Practices
+### Network Security
 
-1. **Use Configuration Files** for static settings
-2. **Use Environment Variables** for secrets and deployment-specific values
-3. **Never commit secrets** to version control
-4. **Validate configuration** before deploying
-5. **Use separate configs** for development and production
-6. **Monitor configuration changes** in production
-7. **Document custom settings** in your deployment notes
+- Development: HTTP on localhost only
+- Production: Use HTTPS with proper certificates
+- Firewall: Restrict backend port (5001) to trusted networks
+
+## Configuration Validation
+
+### Test Configuration
+
+```bash
+# Via CLI
+labctl doctor
+
+# Via Web UI
+# Go to Settings → "Test Connection"
+
+# Check backend health
+curl http://localhost:5001/api/health
+```
+
+### Validate NetBox
+
+```bash
+# Via CLI
+labctl netbox
+
+# Via API
+curl http://localhost:5001/api/netbox/validate
+```
+
+### Debug Configuration
+
+```bash
+# View current configuration (passwords masked)
+curl http://localhost:5001/api/config/settings
+
+# Check system paths and commands
+curl http://localhost:5001/api/config
+```
+
+## Common Configuration Issues
+
+### 1. Remote Connection Failures
+
+**Symptoms**: Deployments fail immediately
+**Solutions**:
+- Verify SSH access: `ssh user@remote-host`
+- Check credentials in Settings page
+- Ensure `clab-tools` installed on remote host
+- Verify network connectivity
+
+### 2. NetBox Integration Failures
+
+**Symptoms**: IP allocation fails
+**Solutions**:
+- Test NetBox connectivity in Settings
+- Verify API token permissions
+- Check prefix exists in NetBox
+- Ensure site and role are configured
+
+### 3. Permission Issues
+
+**Symptoms**: Configuration changes don't persist
+**Solutions**:
+- Check file permissions: `ls -la ~/.labctl/config.yaml`
+- Ensure directory is writable: `ls -ld ~/.labctl/`
+- Run with proper user permissions
+
+### 4. Port Conflicts
+
+**Symptoms**: Backend won't start
+**Solutions**:
+- Check port usage: `lsof -i :5001`
+- Change port: `PORT=5002 ./scripts/run-backend.sh`
+- Kill conflicting process
 
 ## Configuration Examples
 
-### Development Setup
+### Minimal Configuration
 
 ```yaml
-# dev-config.yaml
-server:
-  debug: true
-  
-logging:
-  level: "DEBUG"
-  
-labs:
-  cleanup_on_failure: false  # Keep failed deployments for debugging
+# ~/.labctl/config.yaml - Minimal working config
+repos_dir: "/Users/username/.labctl/repos"
+logs_dir: "/Users/username/.labctl/logs"
+state_file: "/Users/username/.labctl/state.json"
+clab_tools_cmd: "clab-tools"
+git_cmd: "git"
 ```
 
-### Production Setup
+### Full Configuration
 
 ```yaml
-# prod-config.yaml
-server:
-  debug: false
-  
-security:
-  api_key_required: true
-  allowed_origins: ["https://lab-ui.example.com"]
-  
-performance:
-  workers:
-    processes: 4
-    
+# ~/.labctl/config.yaml - Complete configuration
+repos_dir: "/Users/username/.labctl/repos"
+logs_dir: "/Users/username/.labctl/logs"
+state_file: "/Users/username/.labctl/state.json"
+clab_tools_cmd: "clab-tools"
+git_cmd: "git"
+clab_tools_password: "secure-password"
+remote_credentials:
+  ssh_password: "ssh-password"
+  sudo_password: "sudo-password"
 monitoring:
-  prometheus:
-    enabled: true
+  prometheus: "http://monitoring.example.com:9090"
+  grafana: "http://monitoring.example.com:3000"
+netbox:
+  enabled: true
+  url: "http://netbox.example.com"
+  token: "netbox-api-token"
+  default_prefix: "10.100.100.0/24"
+  default_site: "Lab Environment"
+  default_role: "Lab Device"
+  cleanup_on_destroy: true
 ```
 
-### Minimal Setup
+### Development Configuration
 
 ```yaml
-# minimal-config.yaml
-# Uses all defaults except API URL
-api:
-  url: "http://lab-server:5000"
+# ~/.labctl/config.yaml - Development setup
+repos_dir: "/tmp/labctl-dev/repos"
+logs_dir: "/tmp/labctl-dev/logs"
+state_file: "/tmp/labctl-dev/state.json"
+clab_tools_cmd: "clab-tools"
+git_cmd: "git"
+netbox:
+  enabled: false
+monitoring:
+  prometheus: "http://localhost:9090"
+  grafana: "http://localhost:3000"
+```
+
+## Configuration Migration
+
+### From Old Versions
+
+If upgrading from an older version:
+
+1. Backup existing configuration
+2. Check for new configuration options
+3. Update configuration file structure
+4. Test configuration with `labctl doctor`
+
+### Configuration Backup
+
+```bash
+# Backup configuration
+cp ~/.labctl/config.yaml ~/.labctl/config.yaml.backup
+
+# Restore configuration
+cp ~/.labctl/config.yaml.backup ~/.labctl/config.yaml
 ```

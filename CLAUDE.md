@@ -63,9 +63,19 @@ homelab-manager/
 │   │       ├── __init__.py
 │   │       ├── console.py   # Rich console helpers
 │   │       └── validators.py # Input validation
-│   └── web/                 # Future web UI
-│       ├── static/
-│       └── templates/
+│   └── web/                 # Web UI implementation
+│       └── static/
+│           ├── css/
+│           │   ├── main.css
+│           │   └── settings.css
+│           ├── js/
+│           │   ├── api.js
+│           │   ├── app.js
+│           │   ├── constants.js
+│           │   ├── settings.js
+│           │   └── ui.js
+│           ├── index.html
+│           └── settings.html
 ├── scripts/                  # Installation scripts
 │   ├── install-backend.sh    # Backend installation
 │   ├── install-frontend.sh   # CLI-only installation
@@ -201,6 +211,7 @@ homelab-manager/
 - `labs.py`: `/api/labs` endpoints for deployment and management
 - `tasks.py`: `/api/tasks` endpoints for async operation tracking
 - `health.py`: `/api/health` and `/api/config` endpoints
+- `settings.py`: `/api/config/settings` endpoints for secure configuration management
 
 **CLI Modules:**
 - `client.py`: HTTP client for API communication
@@ -300,6 +311,11 @@ labctl netbox                          # Validate NetBox configuration and conne
 # Utility Commands
 labctl version                         # Show version info
 labctl doctor                          # Check system requirements
+
+# Web UI Access
+# Access web interface at http://localhost:5001 (development)
+# - Main dashboard: http://localhost:5001/
+# - Settings page: http://localhost:5001/settings.html
 ```
 
 ### Implementation Details
@@ -347,22 +363,28 @@ clab-tools --config config.yaml --enable-remote lab bootstrap \
 
 ## Web UI
 
-### Single-Page Application (Future)
-The web UI will be a simple HTML/CSS/JavaScript application that calls the same Flask API endpoints as the CLI. This ensures consistency and reduces code duplication.
+### Modern Single-Page Application - ✅ IMPLEMENTED
+The web UI is a responsive HTML/CSS/JavaScript application that provides a complete management interface. It calls the same Flask API endpoints as the CLI, ensuring consistency and reducing code duplication.
 
-**Features:**
-- Lab repository browsing and management
-- One-click lab deployment
-- Real-time deployment status
-- Configuration scenario management
-- Deployment logs viewer
-- Resource usage monitoring (via Prometheus/Grafana integration)
+**Implemented Features:**
+- ✅ Lab repository browsing and management
+- ✅ One-click lab deployment with version selection
+- ✅ Real-time deployment status and monitoring
+- ✅ Settings management with secure password configuration
+- ✅ Repository management (add, update, remove)
+- ✅ Active deployment monitoring
+- ✅ Responsive design for mobile/tablet access
 
 **Architecture:**
-- Static files served by Flask backend (`app.py`)
-- JavaScript makes AJAX calls to API endpoints
-- No server-side rendering - pure client-side
-- Server-Sent Events for real-time deployment updates
+- Static files served by Flask backend (`app.py`) at `/static/`
+- JavaScript modules make AJAX calls to API endpoints
+- No server-side rendering - pure client-side SPA
+- Real-time updates via periodic polling
+- Secure settings management with password masking
+
+**Available Pages:**
+- **Main Dashboard** (`/`): Lab management, deployments, repositories
+- **Settings Page** (`/settings.html`): Configuration management for remote credentials and system settings
 
 **Example API Usage:**
 ```javascript
@@ -612,7 +634,8 @@ The Homelab Manager uses multiple configuration files for different purposes:
    - Loaded by `src/backend/core/config.py`
    - Contains runtime settings for the backend
    - Created automatically with defaults if not present
-   - Includes: repos_dir, logs_dir, state_file, NetBox settings
+   - Includes: repos_dir, logs_dir, state_file, NetBox settings, remote credentials
+   - **Configurable via Web UI**: Settings page provides secure password configuration
 
 2. **Lab Repository Config**: `lab_manager_config.yaml` (in project root)
    - Reference configuration (not actively used by backend)
@@ -652,14 +675,28 @@ The Homelab Manager uses multiple configuration files for different purposes:
      # Password should come from environment variable
    ```
 
-4. **NetBox Configuration** (if using dynamic IPs):
-   - Update `~/.labctl/config.yaml` with NetBox details:
+4. **Complete Configuration Example** (`~/.labctl/config.yaml`):
    ```yaml
+   repos_dir: "/Users/username/.labctl/repos"
+   logs_dir: "/Users/username/.labctl/logs"
+   state_file: "/Users/username/.labctl/state.json"
+   clab_tools_cmd: "clab-tools"
+   git_cmd: "git"
+   clab_tools_password: ""  # Set via Web UI Settings
+   remote_credentials:
+     ssh_password: ""       # Set via Web UI Settings
+     sudo_password: ""      # Set via Web UI Settings
+   monitoring:
+     prometheus: "http://localhost:9090"
+     grafana: "http://localhost:3000"
    netbox:
      enabled: true
      url: "http://10.1.80.12:8080"
-     token: "your-api-token"
+     token: "your-api-token"  # Set via Web UI Settings
      default_prefix: "10.100.100.0/24"
+     default_site: "Lab Environment"
+     default_role: "Lab Device"
+     cleanup_on_destroy: true
    ```
 
 ### Common Deployment Issues
@@ -709,7 +746,7 @@ The Homelab Manager uses multiple configuration files for different purposes:
 
 ### Quick Start for Development
 
-After Phase 2 reorganization, use these commands for development:
+After Phase 4 completion, use these commands for development:
 
 ```bash
 # Backend Development
@@ -720,6 +757,12 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements/backend.txt
 PYTHONPATH=. .venv/bin/python -m src.backend.app
 
+# Web UI Development
+# Backend serves web UI at http://localhost:5001
+# - Main dashboard: http://localhost:5001/
+# - Settings page: http://localhost:5001/settings.html
+# Static files in src/web/static/ are served automatically
+
 # CLI Development
 # Install in development mode
 ./scripts/install-labctl.sh
@@ -729,6 +772,30 @@ labctl --help
 # Running tests
 PYTHONPATH=. .venv/bin/python tests/run_tests.py
 ```
+
+### Web UI Development
+
+**File Structure:**
+```
+src/web/static/
+├── css/           # Stylesheets
+├── js/            # JavaScript modules
+├── index.html     # Main dashboard
+└── settings.html  # Settings page
+```
+
+**Development Workflow:**
+1. Start backend with `./scripts/run-backend.sh`
+2. Access web UI at `http://localhost:5001`
+3. Edit files in `src/web/static/`
+4. Refresh browser to see changes (no build step needed)
+
+**JavaScript Architecture:**
+- `api.js`: API client functions
+- `app.js`: Main application logic
+- `ui.js`: UI helper functions
+- `settings.js`: Settings page logic
+- `constants.js`: Configuration constants
 
 ### Testing Remote Deployments
 
